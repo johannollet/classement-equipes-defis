@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Classement, équipes & tournois</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1c4e80">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Classement">
+<style>
+:root{
+  --bg:#e9eef2; --surface:#ffffff; --ink:#13233a; --muted:#5d6b7d; --line:#d3dbe3;
+  --court:#1c4e80; --court-ink:#ffffff; --court-soft:#dbe7f3;
+  --red:#d3372e; --green:#1d8a4b; --gold:#c8961e; --silver:#8c98a6; --bronze:#a8683a;
+  --num:"Bahnschrift","DIN Alternate","DIN Condensed","Arial Narrow","Roboto Condensed",sans-serif;
+  --body:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1823; --surface:#172332; --ink:#e7edf4; --muted:#93a2b5; --line:#2a3a4d;
+    --court:#4b8fd1; --court-ink:#07121e; --court-soft:#1d3550;
+    --red:#ef6a60; --green:#46c07c;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1823; --surface:#172332; --ink:#e7edf4; --muted:#93a2b5; --line:#2a3a4d;
+  --court:#4b8fd1; --court-ink:#07121e; --court-soft:#1d3550; --red:#ef6a60; --green:#46c07c;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 var(--body);-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--court);outline-offset:2px}
+
+/* En-tête : bande de terrain */
+.top{background:var(--court);color:var(--court-ink);position:relative;overflow:hidden}
+.top::after{content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;border:3px solid currentColor;border-radius:50%;opacity:.18;pointer-events:none}
+.top-in{max-width:1100px;margin:0 auto;padding:14px 16px 10px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.top h1{font-family:var(--num);font-weight:700;font-size:1.55rem;letter-spacing:.01em;margin:0;line-height:1.1}
+.top small{opacity:.8}
+.top .spacer{flex:1}
+.top select{background:rgba(255,255,255,.14);border:1.5px solid rgba(255,255,255,.45);color:inherit;border-radius:8px;padding:8px 10px;min-width:180px}
+.top select option{color:#13233a}
+nav{background:var(--court);border-top:1px solid rgba(255,255,255,.18);position:sticky;top:0;z-index:5}
+nav .in{max-width:1100px;margin:0 auto;display:flex;overflow-x:auto;scrollbar-width:none}
+nav button{background:none;border:0;color:var(--court-ink);opacity:.72;padding:12px 14px;white-space:nowrap;border-bottom:4px solid transparent;font-weight:600}
+nav button.on{opacity:1;border-bottom-color:var(--court-ink)}
+
+main{max-width:1100px;margin:0 auto;padding:16px 16px 60px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+h2{font-family:var(--num);font-size:1.3rem;margin:0 0 10px;font-weight:700}
+h3{font-size:1rem;margin:0 0 8px}
+.muted{color:var(--muted)}
+.row-f{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{border:1.5px solid var(--line);background:var(--surface);border-radius:9px;padding:9px 14px;font-weight:600;min-height:42px}
+.btn.primary{background:var(--court);border-color:var(--court);color:var(--court-ink)}
+.btn.danger{color:var(--red);border-color:currentColor;background:transparent}
+.btn:disabled{opacity:.45;cursor:default}
+.num{width:78px;padding:8px;border:1.5px solid var(--line);border-radius:8px;background:var(--surface);font-family:var(--num);font-size:1.1rem;text-align:center}
+.txt{padding:9px 11px;border:1.5px solid var(--line);border-radius:8px;background:var(--surface);flex:1;min-width:180px}
+textarea.txt{width:100%;min-height:110px;resize:vertical}
+select.sel{padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--surface);min-width:0;width:100%}
+.seg{display:inline-flex;border:1.5px solid var(--court);border-radius:9px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:9px 14px;font-weight:600;color:var(--court)}
+.seg button.on{background:var(--court);color:var(--court-ink)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;font-family:var(--num);font-size:1.05rem;min-width:44px;min-height:40px}
+.chip.on{background:var(--court);border-color:var(--court);color:var(--court-ink)}
+.lbl{font-size:.9rem;color:var(--muted);display:block;margin-bottom:6px}
+
+/* Tableau de classement */
+.board{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.board li{display:grid;grid-template-columns:40px 58px 1fr auto 52px 64px;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);min-height:62px}
+.board li:last-child{border-bottom:0}
+.board li.sel{background:var(--court-soft)}
+.board li.absent .nm{opacity:.5}
+.pick{width:30px;height:30px;border-radius:7px;border:2px solid var(--line);background:transparent;padding:0;font-weight:700;color:var(--court-ink)}
+li.sel .pick{background:var(--court);border-color:var(--court)}
+.rk{font-family:var(--num);font-size:1.7rem;font-weight:700;text-align:center;line-height:1;color:var(--muted)}
+li.p1 .rk{color:var(--gold)} li.p2 .rk{color:var(--silver)} li.p3 .rk{color:var(--bronze)}
+li.p1,li.p2,li.p3{box-shadow:inset 5px 0 0 var(--c)}
+li.p1{--c:var(--gold)} li.p2{--c:var(--silver)} li.p3{--c:var(--bronze)}
+.nm{font-weight:600;font-size:1.05rem;overflow:hidden;text-overflow:ellipsis}
+.mv{font-style:normal;font-family:var(--num);font-size:.9rem;margin-left:8px;padding:1px 6px;border-radius:5px}
+.mv.up{color:var(--green);background:color-mix(in srgb,var(--green) 14%,transparent)}
+.mv.down{color:var(--red);background:color-mix(in srgb,var(--red) 14%,transparent)}
+.pts{font-family:var(--num);font-size:1.9rem;font-weight:700;text-align:right;min-width:60px;font-variant-numeric:tabular-nums}
+.pts small{font-size:.8rem;color:var(--muted);font-weight:400;margin-left:2px}
+.pm{height:46px;border-radius:10px;border:0;font-family:var(--num);font-size:1.3rem;font-weight:700}
+.pm.minus{background:color-mix(in srgb,var(--red) 13%,transparent);color:var(--red)}
+.pm.plus{background:var(--court);color:var(--court-ink)}
+.flash{animation:flash .9s ease}
+@keyframes flash{from{background:color-mix(in srgb,var(--green) 25%,transparent)}to{background:transparent}}
+@media (prefers-reduced-motion: reduce){.flash{animation:none}}
+.selbar{position:sticky;top:50px;z-index:4;background:var(--ink);color:var(--surface);border-radius:10px;padding:10px 12px;margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.selbar .btn{background:transparent;color:inherit;border-color:rgba(255,255,255,.4)}
+.selbar .btn.primary{background:var(--surface);color:var(--ink);border-color:var(--surface)}
+@media (max-width:560px){
+  .board li{grid-template-columns:30px 40px 1fr auto;grid-template-areas:"p r n s" "m m pl pl";row-gap:6px}
+  .board li .pick{grid-area:p} .board li .rk{grid-area:r} .board li .nm{grid-area:n} .board li .pts{grid-area:s}
+  .board li .minus{grid-area:m} .board li .plus{grid-area:pl}
+}
+
+/* Élèves */
+.stu{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.stu:last-child{border-bottom:0}
+.toggle{border:1.5px solid var(--line);border-radius:999px;padding:5px 11px;background:transparent;font-size:.85rem;font-weight:600;min-width:84px}
+.toggle.on{background:color-mix(in srgb,var(--green) 16%,transparent);border-color:var(--green);color:var(--green)}
+.x{border:0;background:transparent;color:var(--red);font-size:1.4rem;width:40px;height:40px;border-radius:8px}
+
+/* Présences */
+.pres{display:flex;flex-wrap:wrap;gap:6px}
+.pres button{border:1.5px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 10px;font-size:.92rem}
+.pres button.on{border-color:var(--court);background:var(--court-soft);font-weight:600}
+.pres button:not(.on){text-decoration:line-through;opacity:.6}
+
+/* Équipes */
+.teams{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.team{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.team header{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:3px solid var(--tc)}
+.dot{width:18px;height:18px;border-radius:50%;background:var(--tc);border:1.5px solid rgba(0,0,0,.2);flex:none}
+.team header b{flex:1}
+.team header span{font-family:var(--num);color:var(--muted)}
+.team ul{list-style:none;margin:0;padding:4px 0}
+.team li button{width:100%;display:flex;gap:8px;align-items:center;border:0;background:transparent;padding:7px 12px;text-align:left}
+.team li button.swap{background:var(--court-soft);outline:2px dashed var(--court);outline-offset:-2px}
+.team li .r{font-family:var(--num);width:26px;color:var(--muted)}
+.team li .n{flex:1}
+.team li .p{font-family:var(--num)}
+
+/* Tournoi */
+.pool{margin-bottom:18px}
+table.st{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+table.st th,table.st td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:center}
+table.st th{font-size:.82rem;color:var(--muted);font-weight:600}
+table.st td.tn{text-align:left;font-weight:600}
+table.st td.big{font-family:var(--num);font-size:1.15rem;font-weight:700}
+.tw{overflow-x:auto}
+.round{margin-top:12px}
+.round h4{margin:0 0 6px;font-size:.9rem;color:var(--muted)}
+.match{display:grid;grid-template-columns:1fr 64px 12px 64px 1fr;gap:6px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line)}
+.match .a{text-align:right}
+.match .num{width:64px}
+.match .win{font-weight:700;color:var(--green)}
+.tname{display:inline-flex;gap:6px;align-items:center}
+
+/* Défis */
+.duel{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:stretch}
+.side{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.side .fav{font-size:.8rem;font-weight:700;color:var(--court)}
+.vs{font-family:var(--num);font-size:2rem;font-weight:700;align-self:center;color:var(--muted)}
+.gain{font-family:var(--num);font-size:1.25rem}
+.gain b{font-size:1.7rem;color:var(--green)}
+.gain .l{color:var(--red)}
+@media (max-width:640px){.duel{grid-template-columns:1fr}.vs{text-align:center}}
+table.bar{border-collapse:collapse;font-variant-numeric:tabular-nums;min-width:100%}
+table.bar td,table.bar th{padding:6px 8px;border:1px solid var(--line);text-align:center}
+table.bar th{font-weight:600;font-size:.85rem;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.grid2 label{font-size:.9rem;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+
+/* Historique */
+.hist{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line)}
+.hist:last-child{border-bottom:0}
+.hist time{font-family:var(--num);color:var(--muted);min-width:92px;font-size:.92rem}
+.hist div{flex:1}
+.empty{text-align:center;padding:36px 16px}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:10px;opacity:0;transition:.25s;pointer-events:none;z-index:20;max-width:90vw}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* Barre des classes */
+.classbar{max-width:1100px;margin:0 auto;padding:0 16px 10px;display:flex;gap:8px;align-items:center;overflow-x:auto;scrollbar-width:thin}
+.classbar .cl-l{opacity:.85;font-size:.9rem;white-space:nowrap;min-width:64px}
+.icons{display:flex;flex-wrap:wrap;gap:6px}.icons button{font-size:1.4rem;width:46px;height:46px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface)}.icons button.on{border-color:var(--court);background:var(--court-soft)}
+.sw{width:40px;height:40px;border-radius:50%;border:3px solid transparent;background:var(--c)}.sw.on{border-color:var(--ink)}
+.classbar button{border:1.5px solid rgba(255,255,255,.5);background:transparent;color:inherit;border-radius:999px;padding:7px 15px;font-weight:600;white-space:nowrap;min-height:40px}
+.classbar button.on{background:var(--court-ink);color:var(--court);border-color:var(--court-ink)}
+.classbar button.ghost{border-style:dashed}
+/* Classes et import */
+.cls{display:grid;grid-template-columns:1fr 84px 175px 44px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.cls:last-of-type{border-bottom:0}
+.cls.on .txt{border-color:var(--court)}
+@media (max-width:560px){.cls{grid-template-columns:1fr auto;}.cls .muted{grid-column:1}}
+.imp-cls{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.imp-cls p{margin:4px 0 0;font-size:.9rem}
+.tag{font-size:.8rem;font-weight:700;padding:2px 8px;border-radius:6px;background:var(--court-soft);color:var(--court);margin-left:6px}
+.tag.old{background:color-mix(in srgb,var(--green) 15%,transparent);color:var(--green)}
+.field{display:flex;flex-direction:column;gap:4px;font-size:.9rem;color:var(--muted);min-width:200px;flex:1}
+.field select{color:var(--ink)}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <div><h1 id="actTitle"></h1><small id="classInfo"></small></div>
+</div>
+<div class="classbar" id="actBar"></div>
+<div class="classbar" id="classBar"></div></header>
+<nav><div class="in" id="tabs"></div></nav>
+<main id="app"></main>
+<input type="file" id="fileIn" accept=".json,application/json" hidden>
+<input type="file" id="xlsIn" accept=".xlsx,.xlsm,.csv,.txt,.xls" hidden>
+<div id="toast" role="status"></div>
+
+<script>
+"use strict";
+/* ====== Données ====== */
+const KEY = "eps-classement-v1";
+const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
+const TEAM_COLORS = [["Rouge","#d64545"],["Bleue","#3b6fd6"],["Verte","#2f9e5b"],["Jaune","#e0b21f"],["Orange","#e57a2e"],["Violette","#8a4fd1"],["Rose","#de5b9b"],["Turquoise","#1fa9b8"],["Marron","#8b5a3c"],["Grise","#7b8490"],["Noire","#2b2b2b"],["Blanche","#e6e6e6"]];
+
+function defaultSettings(){
+  return {
+    step: 1,
+    team: { mode: "homo", by: "count", n: 4, k: 4 },
+    tour: { mode: "rr", pools: 2, w: 3, d: 1, l: 0, sw: 3, sd: 1, sl: 0 },
+    chFmt: 1,
+    ch: { base: 10, perRank: 2, min: 2, max: 30, loserLoses: false, loserPct: 50, lose: 1 }
+  };
+}
+const ACT_COLORS = ["#1c4e80","#b5462f","#1f7a52","#6b3fa0","#a26a12","#0f6e7a","#a23a6e","#3d4a5c"];
+const ACT_ICONS = ["🏅","🏀","🏸","🧭","🏐","⚽","🤾","🏃","🏓","🎾","🤸","🏊","🧗","🏉","💃","🎯","🥋","🚴"];
+function guessIcon(n){
+  const t = n.toLowerCase();
+  const m = [[/basket/,"🏀"],[/badm/,"🏸"],[/orient|co\b/,"🧭"],[/volley/,"🏐"],[/foot/,"⚽"],[/hand/,"🤾"],[/course|athl|demi-fond|vitesse|relais|endurance/,"🏃"],[/ping|tennis de table/,"🏓"],[/tennis/,"🎾"],[/gym|acro/,"🤸"],[/nat|piscine/,"🏊"],[/escalade|grimpe/,"🧗"],[/rugby/,"🏉"],[/danse|cirque/,"💃"],[/tir|arc/,"🎯"],[/judo|lutte|combat|boxe/,"🥋"],[/v[ée]lo|cycl/,"🚴"]];
+  return (m.find(([re]) => re.test(t)) || [0,"🏅"])[1];
+}
+function newClass(name){ return { id: uid(), name, students: [] }; }
+function newActivity(name, settings, color){ return { id: uid(), name, icon: guessIcon(name), color: color || ACT_COLORS[0], settings: settings ? JSON.parse(JSON.stringify(settings)) : defaultSettings() }; }
+function defaultState(){ const c = newClass("Ma classe"), a = newActivity("Mon activité"); return { classes: [c], cur: c.id, activities: [a], curAct: a.id, recs: {} }; }
+function normSettings(x){
+  const st = Object.assign(defaultSettings(), x || {});
+  for (const k of ["team","tour","ch"]) st[k] = Object.assign(defaultSettings()[k], st[k] || {});
+  return st;
+}
+function normalize(s){
+  if (!Array.isArray(s.classes) || !s.classes.length){ const c = newClass("Ma classe"); s.classes = [c]; s.cur = c.id; }
+  s.recs ||= {};
+  if (!Array.isArray(s.activities) || !s.activities.length){
+    // Ancienne version sans activités : tout est rangé dans une première activité
+    const a = newActivity("Mon activité", s.settings);
+    s.activities = [a]; s.curAct = a.id;
+    s.classes.forEach(c => {
+      const pts = {}; (c.students || []).forEach(st => { if (st.points) pts[st.id] = st.points; });
+      s.recs[a.id + "|" + c.id] = { pts, history: c.history || [], teams: c.teams || null, tour: c.tour || null };
+    });
+  }
+  delete s.settings;
+  s.classes.forEach(c => {
+    c.students = (c.students || []).map(st => ({ id: st.id, name: st.name, present: st.present !== false }));
+    delete c.history; delete c.teams; delete c.tour;
+  });
+  s.activities.forEach(a => { a.settings = normSettings(a.settings); a.icon ||= guessIcon(a.name); a.color ||= ACT_COLORS[0]; });
+  if (!s.classes.some(c => c.id === s.cur)) s.cur = s.classes[0].id;
+  if (!s.activities.some(a => a.id === s.curAct)) s.curAct = s.activities[0].id;
+  return s;
+}
+function load(){ try { const r = localStorage.getItem(KEY); if (r) return normalize(JSON.parse(r)); } catch(e){} return defaultState(); }
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){ toast("Enregistrement impossible dans ce navigateur : exportez une sauvegarde."); } }
+
+let S = load();
+let imp = null;
+let view = "rank", sel = new Set(), motif = "", moved = new Map(), movedT = null, swapSel = null, chSel = { a: [], b: [] }, flashIds = new Set();
+
+const A = () => S.activities.find(a => a.id === S.curAct) || S.activities[0];
+const ST = () => A().settings;
+const K = () => S.classes.find(c => c.id === S.cur) || S.classes[0];
+function rec(aId, cId){ const key = aId + "|" + cId; return S.recs[key] ||= { pts: {}, history: [], teams: null, tour: null }; }
+/* Vue « activité + classe » : les élèves viennent de la classe, les points et le reste de l'activité */
+function C(){
+  const k = K(), r = rec(A().id, k.id);
+  const wrap = s => ({ _s: s, get id(){ return s.id; }, get name(){ return s.name; }, set name(v){ s.name = v; },
+    get present(){ return s.present; }, set present(v){ s.present = v; },
+    get points(){ return r.pts[s.id] || 0; }, set points(v){ r.pts[s.id] = v; } });
+  return { _k: k, _r: r, id: k.id, get name(){ return k.name; }, set name(v){ k.name = v; },
+    get students(){ return k.students.map(wrap); }, set students(v){ k.students = v.map(w => w._s || w); },
+    get history(){ return r.history; }, set history(v){ r.history = v; },
+    get teams(){ return r.teams; }, set teams(v){ r.teams = v; },
+    get tour(){ return r.tour; }, set tour(v){ r.tour = v; } };
+}
+function applyTheme(){
+  const a = A(), st = document.documentElement.style;
+  st.setProperty("--court", a.color); st.setProperty("--court-ink", "#ffffff");
+  st.setProperty("--court-soft", `color-mix(in srgb, ${a.color} 16%, transparent)`);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", a.color);
+}
+function switchCtx(){ sel.clear(); swapSel = null; chSel = { a: [], b: [] }; moved = new Map(); save(); render(); }
+const stu = (id, c = C()) => c.students.find(s => s.id === id);
+const esc = s => String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const plural = (n, w) => `${n} ${w}${Math.abs(n) > 1 ? "s" : ""}`;
+const sgn = n => (n > 0 ? "+" : n < 0 ? "−" : "") + Math.abs(n);
+
+function ranking(c = C()){
+  const list = [...c.students].sort((x, y) => y.points - x.points || x.name.localeCompare(y.name, "fr"));
+  const rank = new Map(); let r = 0, prev = null;
+  list.forEach((s, i) => { if (s.points !== prev){ r = i + 1; prev = s.points; } rank.set(s.id, r); });
+  return { list, rank };
+}
+
+/* Toute modification de points passe ici => historique annulable */
+function applyChanges(changes, text, kind = "pts"){
+  const c = C();
+  changes = changes.filter(ch => ch.delta !== 0 && stu(ch.sid, c));
+  if (!changes.length) return null;
+  changes.forEach(ch => { stu(ch.sid, c).points += ch.delta; flashIds.add(ch.sid); });
+  const h = { id: uid(), t: Date.now(), text, kind, changes };
+  c.history.unshift(h);
+  if (c.history.length > 800) c.history.length = 800;
+  save();
+  return h.id;
+}
+function track(fn){
+  const before = ranking().rank; const res = fn(); const after = ranking().rank;
+  moved = new Map();
+  after.forEach((r, id) => { const b = before.get(id); if (b && b !== r) moved.set(id, b - r); });
+  clearTimeout(movedT);
+  movedT = setTimeout(() => { moved = new Map(); if (view === "rank") rerender(); }, 6000);
+  return res;
+}
+function give(ids, delta){
+  const c = C();
+  const names = ids.map(id => stu(id, c)?.name).filter(Boolean);
+  const who = names.length > 3 ? plural(names.length, "élève") : names.join(", ");
+  track(() => applyChanges(ids.map(id => ({ sid: id, delta })), `${sgn(delta)} pt${Math.abs(delta) > 1 ? "s" : ""} : ${who}${motif ? " (" + motif + ")" : ""}`));
+  render();
+}
+
+/* ====== Équipes ====== */
+function teamAvg(t, c = C()){
+  const m = t.members.map(id => stu(id, c)).filter(Boolean);
+  return m.length ? m.reduce((a, s) => a + s.points, 0) / m.length : 0;
+}
+function buildTeams(shuffle){
+  const c = C(), cfg = ST().team;
+  let pres = c.students.filter(s => s.present !== false).map(s => ({ s, r: Math.random() }));
+  pres.sort((x, y) => y.s.points - x.s.points || (shuffle ? x.r - y.r : x.s.name.localeCompare(y.s.name, "fr")));
+  pres = pres.map(o => o.s);
+  const N = pres.length;
+  if (N < 2){ toast("Il faut au moins 2 élèves présents."); return; }
+  let n = cfg.by === "count" ? cfg.n : Math.floor(N / Math.max(1, cfg.k));
+  n = Math.max(2, Math.min(n || 2, N));
+  const teams = Array.from({ length: n }, (_, i) => {
+    const [nm, col] = TEAM_COLORS[i % TEAM_COLORS.length];
+    return { id: uid(), name: "Équipe " + nm + (i >= TEAM_COLORS.length ? " " + (Math.floor(i / TEAM_COLORS.length) + 1) : ""), color: col, members: [] };
+  });
+  if (cfg.mode === "niveau"){
+    const base = Math.floor(N / n), extra = N % n; let i = 0;
+    teams.forEach((t, ti) => { const sz = base + (ti < extra ? 1 : 0); t.members = pres.slice(i, i + sz).map(s => s.id); i += sz; });
+  } else {
+    const tot = new Array(n).fill(0);
+    for (let i = 0; i < N; i += n){
+      const tier = pres.slice(i, i + n);
+      const order = [...Array(n).keys()].map(k => ({ k, t: tot[k], c: teams[k].members.length, r: Math.random() }));
+      order.sort((a, b) => a.c - b.c || a.t - b.t || (shuffle ? a.r - b.r : (i / n) % 2 ? b.k - a.k : a.k - b.k));
+      tier.forEach((s, j) => { const k = order[j].k; teams[k].members.push(s.id); tot[k] += s.points; });
+    }
+    // Affinage : échanges qui rapprochent la moyenne de chaque équipe de la moyenne générale
+    const P = new Map(c.students.map(s => [s.id, s.points]));
+    const g = pres.reduce((a, s) => a + s.points, 0) / N;
+    const sum = t => t.members.reduce((a, id) => a + P.get(id), 0);
+    for (let it = 0; it < 300; it++){
+      let improved = false;
+      for (let a = 0; a < n; a++) for (let b = a + 1; b < n; b++){
+        const A = teams[a], B = teams[b], la = A.members.length, lb = B.members.length;
+        const sa = sum(A), sb = sum(B);
+        const cost = (x, y) => (x / la - g) ** 2 + (y / lb - g) ** 2;
+        let best = null, bestV = cost(sa, sb) - 1e-9;
+        for (let i = 0; i < la; i++) for (let j = 0; j < lb; j++){
+          const d = P.get(B.members[j]) - P.get(A.members[i]);
+          const v = cost(sa + d, sb - d);
+          if (v < bestV){ bestV = v; best = [i, j]; }
+        }
+        if (best){ const [i, j] = best; [A.members[i], B.members[j]] = [B.members[j], A.members[i]]; improved = true; }
+      }
+      if (!improved) break;
+    }
+  }
+  const { rank } = ranking(c);
+  teams.forEach(t => t.members.sort((x, y) => rank.get(x) - rank.get(y)));
+  c.teams = teams; swapSel = null; save(); render();
+  toast(`${plural(n, "équipe")} constituée${n > 1 ? "s" : ""}.`);
+}
+
+/* ====== Tournoi ====== */
+function roundRobin(ids){
+  const a = [...ids]; if (a.length % 2) a.push(null);
+  const n = a.length, rounds = [];
+  for (let r = 0; r < n - 1; r++){
+    const m = [];
+    for (let i = 0; i < n / 2; i++){ const x = a[i], y = a[n - 1 - i]; if (x && y) m.push(r % 2 ? [y, x] : [x, y]); }
+    rounds.push(m);
+    a.splice(1, 0, a.pop());
+  }
+  return rounds;
+}
+function genTour(){
+  const c = C(), cfg = ST().tour;
+  if (!c.teams || c.teams.length < 2){ toast("Constituez d'abord au moins 2 équipes."); return; }
+  if (c.tour && !confirm("Remplacer le tournoi en cours ?")) return;
+  const teams = c.teams.map(t => ({ ...t, members: [...t.members], avg: teamAvg(t, c) }));
+  let groups;
+  if (cfg.mode === "rr") groups = [teams.map(t => t.id)];
+  else {
+    const sorted = [...teams].sort((a, b) => b.avg - a.avg);
+    const p = Math.max(1, Math.min(cfg.pools, Math.floor(teams.length / 2)));
+    if (p < cfg.pools) toast(`Seulement ${plural(p, "poule")} possible${p > 1 ? "s" : ""} avec ${teams.length} équipes.`);
+    const base = Math.floor(sorted.length / p), extra = sorted.length % p; groups = []; let i = 0;
+    for (let gi = 0; gi < p; gi++){ const sz = base + (gi < extra ? 1 : 0); groups.push(sorted.slice(i, i + sz).map(t => t.id)); i += sz; }
+  }
+  const L = "ABCDEFGHIJ";
+  const pools = groups.map((ids, gi) => ({
+    name: groups.length > 1 ? `Poule ${L[gi]} · niveau ${gi + 1}` : "Tous contre tous",
+    teamIds: ids,
+    matches: roundRobin(ids).flatMap((m, ri) => m.map(([a, b]) => ({ id: uid(), round: ri + 1, a, b, sa: null, sb: null })))
+  }));
+  c.tour = { id: uid(), created: Date.now(), mode: cfg.mode, teams, pools, awardHistId: null };
+  save(); render();
+}
+function standings(pool, tour){
+  const cfg = ST().tour;
+  const rows = pool.teamIds.map(id => ({ t: tour.teams.find(x => x.id === id), j: 0, g: 0, n: 0, p: 0, bp: 0, bc: 0, pts: 0 }));
+  const R = id => rows.find(r => r.t.id === id);
+  pool.matches.forEach(m => {
+    if (m.sa === null || m.sb === null) return;
+    const A = R(m.a), B = R(m.b);
+    A.j++; B.j++; A.bp += m.sa; A.bc += m.sb; B.bp += m.sb; B.bc += m.sa;
+    if (m.sa > m.sb){ A.g++; B.p++; A.pts += cfg.w; B.pts += cfg.l; }
+    else if (m.sa < m.sb){ B.g++; A.p++; B.pts += cfg.w; A.pts += cfg.l; }
+    else { A.n++; B.n++; A.pts += cfg.d; B.pts += cfg.d; }
+  });
+  rows.sort((x, y) => y.pts - x.pts || (y.bp - y.bc) - (x.bp - x.bc) || y.bp - x.bp || x.t.name.localeCompare(y.t.name, "fr"));
+  return rows;
+}
+function awardTour(){
+  const c = C(), t = c.tour, cfg = ST().tour;
+  const all = t.pools.flatMap(p => p.matches), played = all.filter(m => m.sa !== null && m.sb !== null);
+  if (!played.length){ toast("Aucun match n'a encore de score."); return; }
+  if (played.length < all.length && !confirm(`${all.length - played.length} match(s) sans score. Distribuer quand même ?`)) return;
+  const acc = new Map();
+  const add = (teamId, v) => t.teams.find(x => x.id === teamId).members.forEach(id => acc.set(id, (acc.get(id) || 0) + v));
+  played.forEach(m => {
+    if (m.sa > m.sb){ add(m.a, cfg.sw); add(m.b, cfg.sl); }
+    else if (m.sa < m.sb){ add(m.b, cfg.sw); add(m.a, cfg.sl); }
+    else { add(m.a, cfg.sd); add(m.b, cfg.sd); }
+  });
+  const hid = track(() => applyChanges([...acc].map(([sid, delta]) => ({ sid, delta })), `Tournoi : points distribués (${plural(played.length, "match")})`, "tour"));
+  if (hid){ t.awardHistId = hid; save(); toast("Points du tournoi ajoutés au classement."); }
+  render();
+}
+
+/* ====== Défis ====== */
+function chGain(rW, rL){
+  const k = ST().ch, d = rL - rW; // d > 0 : le vainqueur était mieux classé
+  const g = d >= 0 ? k.base - k.perRank * d : k.base + k.perRank * -d;
+  return Math.round(Math.min(k.max, Math.max(k.min, g)));
+}
+const chLoss = g => ST().ch.loserLoses ? Math.round(g * ST().ch.loserPct / 100) : 0;
+const chConso = () => ST().ch.loserLoses ? 0 : Math.max(0, Math.round(+ST().ch.lose || 0));
+function avgRank(ids, rank){ return ids.reduce((a, id) => a + rank.get(id), 0) / ids.length; }
+function chWin(side){
+  const c = C(), { rank } = ranking(c);
+  const W = chSel[side], L = chSel[side === "a" ? "b" : "a"];
+  const g = chGain(avgRank(W, rank), avgRank(L, rank)), l = chLoss(g), p = chConso();
+  const names = ids => ids.map(id => stu(id, c).name).join(" & ");
+  const changes = [...W.map(id => ({ sid: id, delta: g })), ...L.map(id => ({ sid: id, delta: l ? -Math.min(l, Math.max(0, stu(id, c).points)) : p }))];
+  const f = ST().chFmt;
+  track(() => applyChanges(changes, `Défi ${f === 1 ? "solo" : f + " c. " + f} : ${names(W)} bat ${names(L)} (+${g}${l ? " / −" + l : p ? " / perdant +" + p : ""})`, "defi"));
+  toast(`${names(W)} : +${g} pt${g > 1 ? "s" : ""}${f > 1 ? " chacun" : ""}${p ? ` · ${names(L)} : +${p}` : ""}`);
+  chSel = { a: [], b: [] };
+  render();
+}
+
+/* ====== Rendu ====== */
+const TABS = [["classes","Activités & classes"],["rank","Classement"],["eleves","Élèves"],["equipes","Équipes"],["tournoi","Tournoi"],["defis","Défis"],["histo","Historique"],["save","Sauvegarde"]];
+function render(){
+  const c = C();
+  document.getElementById("classBar").innerHTML = `<span class="cl-l">Classe :</span>` + S.classes.map(k => `<button class="${k.id === c.id ? "on" : ""}" data-act="openClass" data-id="${k.id}" aria-pressed="${k.id === c.id}">${esc(k.name)}</button>`).join("") + `<button class="ghost" data-act="newClass">+ Classe</button><button class="ghost" data-act="tab" data-v="classes">Importer depuis Excel</button>`;
+  const nPres = c.students.filter(s => s.present !== false).length;
+  document.getElementById("classInfo").textContent = `${c.name} : ${plural(c.students.length, "élève")}, ${nPres} présent${nPres > 1 ? "s" : ""}`;
+  const a = A();
+  document.getElementById("actTitle").textContent = `${a.icon} ${a.name}`;
+  document.getElementById("actBar").innerHTML = `<span class="cl-l">Activité :</span>` + S.activities.map(x => `<button class="${x.id === a.id ? "on" : ""}" data-act="openAct" data-id="${x.id}" aria-pressed="${x.id === a.id}">${x.icon} ${esc(x.name)}</button>`).join("") + `<button class="ghost" data-act="newAct">+ Activité</button>`;
+  applyTheme();
+  document.getElementById("tabs").innerHTML = TABS.map(([k, l]) => `<button data-act="tab" data-v="${k}" class="${view === k ? "on" : ""}">${l}</button>`).join("");
+  const V = { classes: vClasses, rank: vRank, eleves: vEleves, equipes: vEquipes, tournoi: vTournoi, defis: vDefis, histo: vHisto, save: vSave };
+  document.getElementById("app").innerHTML = V[view]();
+  flashIds.forEach(id => document.querySelector(`[data-row="${id}"]`)?.classList.add("flash"));
+  flashIds.clear();
+}
+function rerender(){
+  const a = document.activeElement, k = a && a.dataset ? a.dataset.key : null;
+  render();
+  if (k){ const el = document.querySelector(`[data-key="${k}"]`); if (el){ el.focus(); if (el.select && el.type === "number") el.select(); } }
+}
+const empty = (msg, btn, tab) => `<div class="card empty"><p>${msg}</p>${btn ? `<button class="btn primary" data-act="tab" data-v="${tab}">${btn}</button>` : ""}</div>`;
+
+function vRank(){
+  const c = C(), { list, rank } = ranking(c);
+  if (!list.length) return empty("Aucun élève dans cette classe pour l'instant.", "Ajouter des élèves", "eleves");
+  const step = ST().step;
+  sel.forEach(id => { if (!stu(id, c)) sel.delete(id); });
+  let h = `<section class="card"><div class="row-f">
+    <div><span class="lbl">Points par appui</span><div class="chips">
+      ${[1,2,3,5,10].map(v => `<button class="chip ${v === step ? "on" : ""}" data-act="step" data-v="${v}">${v}</button>`).join("")}
+      <input type="number" class="num" min="1" value="${step}" data-ch="step" data-key="step" aria-label="Autre valeur">
+    </div></div>
+    <div style="flex:1;min-width:220px"><span class="lbl">Motif (facultatif, visible dans l'historique)</span>
+      <input class="txt" style="width:100%" data-in="motif" value="${esc(motif)}" placeholder="Ex. : fair-play, arbitrage, progrès"></div>
+  </div></section>`;
+  if (sel.size) h += `<div class="selbar"><b>${plural(sel.size, "élève")} sélectionné${sel.size > 1 ? "s" : ""}</b><span style="flex:1"></span>
+    <button class="btn primary" data-act="selAdd">+${step} à la sélection</button>
+    <button class="btn" data-act="selSub">−${step}</button>
+    <button class="btn" data-act="selClear">Désélectionner</button></div>`;
+  h += `<ol class="board">` + list.map(s => {
+    const r = rank.get(s.id), mv = moved.get(s.id);
+    return `<li data-row="${s.id}" class="${r <= 3 && s.points > 0 ? "p" + r : ""} ${sel.has(s.id) ? "sel" : ""} ${s.present === false ? "absent" : ""}">
+      <button class="pick" data-act="toggleSel" data-id="${s.id}" aria-label="Sélectionner ${esc(s.name)}">${sel.has(s.id) ? "✓" : ""}</button>
+      <span class="rk">${r}</span>
+      <span class="nm">${esc(s.name)}${mv ? `<em class="mv ${mv > 0 ? "up" : "down"}">${mv > 0 ? "▲" : "▼"} ${Math.abs(mv)}</em>` : ""}</span>
+      <span class="pts">${s.points}<small>pts</small></span>
+      <button class="pm minus" data-act="sub" data-id="${s.id}" aria-label="Retirer ${step}">−${step}</button>
+      <button class="pm plus" data-act="add" data-id="${s.id}" aria-label="Ajouter ${step}">+${step}</button>
+    </li>`;
+  }).join("") + `</ol>`;
+  return h;
+}
+
+function vEleves(){
+  const c = C();
+  const list = [...c.students].sort((a, b) => a.name.localeCompare(b.name, "fr"));
+  return `<section class="card"><h2>Ajouter des élèves à ${esc(c.name)}</h2>
+      <textarea class="txt" id="newNames" placeholder="Un nom par ligne. Vous pouvez coller une colonne depuis Excel."></textarea>
+      <div class="row-f" style="margin-top:8px"><button class="btn primary" data-act="addStudents">Ajouter</button></div></section>
+    <section class="card"><h2>${plural(list.length, "élève")}</h2>
+      ${list.length ? list.map(s => `<div class="stu">
+        <button class="toggle ${s.present !== false ? "on" : ""}" data-act="togglePresent" data-id="${s.id}">${s.present !== false ? "Présent" : "Absent"}</button>
+        <input class="txt" data-ch="renameStudent" data-id="${s.id}" value="${esc(s.name)}" aria-label="Nom">
+        <span class="pts" style="font-size:1.2rem">${s.points}</span>
+        <button class="x" data-act="delStudent" data-id="${s.id}" aria-label="Supprimer ${esc(s.name)}">×</button></div>`).join("") : `<p class="muted">Aucun élève.</p>`}
+      ${list.length ? `<div class="row-f" style="margin-top:12px"><button class="btn danger" data-act="resetPoints">Remettre tous les points à 0</button>
+      <span class="muted" style="font-size:.9rem">Annulable depuis l'historique.</span></div>` : ""}
+    </section>`;
+}
+
+function presenceBlock(){
+  const c = C(), { list, rank } = ranking(c);
+  const n = list.filter(s => s.present !== false).length;
+  return `<section class="card"><div class="row-f" style="margin-bottom:8px"><h2 style="margin:0;flex:1">Élèves présents (${n}/${list.length})</h2>
+    <button class="btn" data-act="allPresent">Tous</button><button class="btn" data-act="nonePresent">Aucun</button></div>
+    <div class="pres">${list.map(s => `<button class="${s.present !== false ? "on" : ""}" data-act="togglePresent" data-id="${s.id}">${rank.get(s.id)}. ${esc(s.name)}</button>`).join("")}</div>
+    <p class="muted" style="margin:8px 0 0;font-size:.9rem">Touchez un nom pour le marquer absent. Les absents ne sont pas placés dans les équipes.</p></section>`;
+}
+
+function vEquipes(){
+  const c = C(), cfg = ST().team;
+  if (!c.students.length) return empty("Ajoutez d'abord les élèves de la classe.", "Ajouter des élèves", "eleves");
+  const { rank } = ranking(c);
+  let h = presenceBlock();
+  h += `<section class="card"><h2>Constituer les équipes</h2>
+    <div class="row-f" style="margin-bottom:12px">
+      <div class="seg"><button class="${cfg.mode === "homo" ? "on" : ""}" data-act="teamMode" data-v="homo">Équipes homogènes</button><button class="${cfg.mode === "niveau" ? "on" : ""}" data-act="teamMode" data-v="niveau">Équipes de niveau</button></div>
+    </div>
+    <p class="muted" style="margin:0 0 12px;font-size:.92rem">${cfg.mode === "homo" ? "Chaque équipe reçoit des élèves de tous les niveaux : les équipes sont équilibrées entre elles." : "Les mieux classés jouent ensemble, puis les suivants, et ainsi de suite."}</p>
+    <div class="row-f" style="margin-bottom:12px">
+      <div class="seg"><button class="${cfg.by === "count" ? "on" : ""}" data-act="teamBy" data-v="count">Nombre d'équipes</button><button class="${cfg.by === "size" ? "on" : ""}" data-act="teamBy" data-v="size">Joueurs par équipe</button></div>
+      ${cfg.by === "count" ? `<input type="number" class="num" min="2" value="${cfg.n}" data-ch="teamN" data-key="teamN" aria-label="Nombre d'équipes">` : `<input type="number" class="num" min="1" value="${cfg.k}" data-ch="teamK" data-key="teamK" aria-label="Joueurs par équipe">`}
+    </div>
+    <div class="row-f"><button class="btn primary" data-act="makeTeams">Constituer les équipes</button>
+      ${c.teams ? `<button class="btn" data-act="reshuffle">Autre tirage</button><button class="btn danger" data-act="clearTeams">Effacer</button>` : ""}</div>
+  </section>`;
+  if (c.teams){
+    const valid = c.teams.map(t => ({ ...t, members: t.members.filter(id => stu(id, c)) }));
+    h += `<p class="muted" style="margin:0 0 10px">Pour échanger deux joueurs, touchez-en un puis touchez un joueur d'une autre équipe.</p><div class="teams">` + valid.map(t => `
+      <div class="team" style="--tc:${t.color}"><header><span class="dot"></span><b>${esc(t.name)}</b><span title="Moyenne de points">moy. ${teamAvg(t, c).toFixed(1)}</span></header>
+      <ul>${t.members.map(id => { const s = stu(id, c); return `<li><button class="${swapSel === id ? "swap" : ""}" data-act="pickMember" data-id="${id}"><span class="r">${rank.get(id)}</span><span class="n">${esc(s.name)}</span><span class="p">${s.points}</span></button></li>`; }).join("")}</ul></div>`).join("") + `</div>
+      <div class="row-f" style="margin-top:14px"><button class="btn primary" data-act="tab" data-v="tournoi">Organiser un tournoi avec ces équipes</button></div>`;
+  }
+  return h;
+}
+
+function vTournoi(){
+  const c = C(), cfg = ST().tour;
+  const nT = c.teams ? c.teams.length : 0;
+  let h = `<section class="card"><h2>${c.tour ? "Nouveau tournoi" : "Créer un tournoi"}</h2>
+    ${nT < 2 ? `<p>Constituez d'abord au moins 2 équipes.</p><button class="btn primary" data-act="tab" data-v="equipes">Aller aux équipes</button>` : `
+    <p class="muted" style="margin-top:0">${plural(nT, "équipe")} disponibles (onglet Équipes).</p>
+    <div class="row-f" style="margin-bottom:12px">
+      <div class="seg"><button class="${cfg.mode === "rr" ? "on" : ""}" data-act="tourMode" data-v="rr">Tout le monde se rencontre</button><button class="${cfg.mode === "pools" ? "on" : ""}" data-act="tourMode" data-v="pools">Poules de niveau</button></div>
+      ${cfg.mode === "pools" ? `<label class="row-f">Nombre de poules <input type="number" class="num" min="1" value="${cfg.pools}" data-ch="tourPools" data-key="tourPools"></label>` : ""}
+    </div>
+    ${cfg.mode === "pools" ? `<p class="muted" style="margin:0 0 12px;font-size:.92rem">Les équipes sont triées selon la moyenne de points de leurs joueurs : la poule A regroupe les meilleures, la dernière les moins fortes.</p>` : ""}
+    <div class="grid2" style="margin-bottom:12px">
+      <label>Victoire (pts au classement du tournoi)<input type="number" class="num" value="${cfg.w}" data-ch="tourCfg" data-f="w" data-key="tw"></label>
+      <label>Match nul<input type="number" class="num" value="${cfg.d}" data-ch="tourCfg" data-f="d" data-key="td"></label>
+      <label>Défaite<input type="number" class="num" value="${cfg.l}" data-ch="tourCfg" data-f="l" data-key="tl"></label>
+    </div>
+    <button class="btn primary" data-act="genTour">Générer les matchs</button>`}
+  </section>`;
+  if (!c.tour) return h;
+  const t = c.tour;
+  const tn = id => { const x = t.teams.find(k => k.id === id); return `<span class="tname"><span class="dot" style="--tc:${x.color}"></span>${esc(x.name)}</span>`; };
+  let body = t.pools.map(p => {
+    const st = standings(p, t);
+    const rounds = [...new Set(p.matches.map(m => m.round))];
+    return `<section class="card pool"><h2>${esc(p.name)}</h2>
+      <div class="tw"><table class="st"><thead><tr><th></th><th style="text-align:left">Équipe</th><th>J</th><th>G</th><th>N</th><th>P</th><th>+</th><th>−</th><th>Diff.</th><th>Pts</th></tr></thead><tbody>
+      ${st.map((r, i) => `<tr><td class="big">${i + 1}</td><td class="tn">${tn(r.t.id)}</td><td>${r.j}</td><td>${r.g}</td><td>${r.n}</td><td>${r.p}</td><td>${r.bp}</td><td>${r.bc}</td><td>${sgn(r.bp - r.bc) || 0}</td><td class="big">${r.pts}</td></tr>`).join("")}
+      </tbody></table></div>
+      ${rounds.map(r => `<div class="round"><h4>Tour ${r}</h4>${p.matches.filter(m => m.round === r).map(m => {
+        const done = m.sa !== null && m.sb !== null;
+        return `<div class="match"><span class="a ${done && m.sa > m.sb ? "win" : ""}">${tn(m.a)}</span>
+          <input type="number" class="num" min="0" inputmode="numeric" value="${m.sa ?? ""}" data-ch="score" data-mid="${m.id}" data-side="a" data-key="s${m.id}a" aria-label="Score">
+          <span class="muted" style="text-align:center">–</span>
+          <input type="number" class="num" min="0" inputmode="numeric" value="${m.sb ?? ""}" data-ch="score" data-mid="${m.id}" data-side="b" data-key="s${m.id}b" aria-label="Score">
+          <span class="${done && m.sb > m.sa ? "win" : ""}">${tn(m.b)}</span></div>`; }).join("")}</div>`).join("")}
+    </section>`;
+  }).join("");
+  const awarded = t.awardHistId && c.history.some(x => x.id === t.awardHistId);
+  body += `<section class="card"><h2>Reporter le tournoi au classement des élèves</h2>
+    <p class="muted" style="margin-top:0">Chaque joueur reçoit des points selon les résultats de son équipe.</p>
+    <div class="grid2" style="margin-bottom:12px">
+      <label>Par victoire<input type="number" class="num" value="${cfg.sw}" data-ch="tourCfg" data-f="sw" data-key="tsw"></label>
+      <label>Par nul<input type="number" class="num" value="${cfg.sd}" data-ch="tourCfg" data-f="sd" data-key="tsd"></label>
+      <label>Par défaite<input type="number" class="num" value="${cfg.sl}" data-ch="tourCfg" data-f="sl" data-key="tsl"></label>
+    </div>
+    <div class="row-f"><button class="btn primary" data-act="award" ${awarded ? "disabled" : ""}>${awarded ? "Points déjà distribués" : "Distribuer les points"}</button>
+    <button class="btn danger" data-act="delTour">Supprimer ce tournoi</button></div>
+    ${awarded ? `<p class="muted" style="font-size:.9rem">Pour corriger, annulez la ligne « Tournoi » dans l'historique puis distribuez à nouveau.</p>` : ""}</section>`;
+  return h + body;
+}
+
+function vDefis(){
+  const c = C(), { list, rank } = ranking(c), k = ST().ch, f = ST().chFmt;
+  if (c.students.length < 2) return empty("Il faut au moins 2 élèves pour lancer un défi.", "Ajouter des élèves", "eleves");
+  const pres = list.filter(s => s.present !== false);
+  ["a","b"].forEach(x => { chSel[x] = chSel[x].slice(0, f).map(id => stu(id, c) ? id : ""); while (chSel[x].length < f) chSel[x].push(""); });
+  const opt = cur => `<option value="">Choisir un élève</option>` + pres.map(s => `<option value="${s.id}" ${s.id === cur ? "selected" : ""}>${rank.get(s.id)}. ${esc(s.name)} (${s.points} pts)</option>`).join("");
+  const ids = [...chSel.a, ...chSel.b], complete = ids.every(Boolean), uniq = new Set(ids).size === ids.length;
+  let ra, rb, gA, gB;
+  if (complete && uniq){ ra = avgRank(chSel.a, rank); rb = avgRank(chSel.b, rank); gA = chGain(ra, rb); gB = chGain(rb, ra); }
+  const side = (x, r, g, other) => `<div class="side">
+    <h3>${f === 1 ? (x === "a" ? "Élève A" : "Élève B") : (x === "a" ? "Équipe A" : "Équipe B")}</h3>
+    ${chSel[x].map((id, i) => `<select class="sel" data-ch="chPick" data-side="${x}" data-i="${i}" aria-label="Joueur">${opt(id)}</select>`).join("")}
+    ${g !== undefined ? `<div class="muted">${f > 1 ? "Rang moyen" : "Rang"} : ${Number.isInteger(r) ? r : r.toFixed(1)} ${r < other ? `<span class="fav">· favori</span>` : ""}</div>
+      <div class="gain">Si victoire : <b>+${g}</b>${f > 1 ? " chacun" : ""}${chLoss(g) ? ` <span class="l">(adversaire${f > 1 ? "s" : ""} −${chLoss(g)})</span>` : chConso() ? ` <span class="muted" style="font-size:1rem">(adversaire${f > 1 ? "s" : ""} +${chConso()})</span>` : ""}</div>
+      <button class="btn primary" data-act="chWin" data-v="${x}">Victoire ${x.toUpperCase()}</button>` : ""}
+  </div>`;
+  let h = `<section class="card"><h2>Lancer un défi</h2>
+    <div class="row-f" style="margin-bottom:12px"><div class="seg">
+      <button class="${f === 1 ? "on" : ""}" data-act="chFmt" data-v="1">Solo</button>
+      <button class="${f === 2 ? "on" : ""}" data-act="chFmt" data-v="2">2 contre 2</button>
+      <button class="${f === 3 ? "on" : ""}" data-act="chFmt" data-v="3">3 contre 3</button></div>
+      <button class="btn" data-act="chSwap">Inverser les côtés</button><button class="btn" data-act="chClear">Vider</button></div>
+    <div class="duel">${side("a", ra, gA, rb)}<div class="vs">VS</div>${side("b", rb, gB, ra)}</div>
+    ${complete && !uniq ? `<p style="color:var(--red)">Un même élève est sélectionné deux fois.</p>` : ""}
+  </section>`;
+  const ex = [0, 1, 2, 3, 5, 8, 10];
+  h += `<section class="card"><h2>Barème des défis</h2>
+    <p class="muted" style="margin-top:0">L'écart se mesure en places au classement (rang moyen pour les défis à 2 ou 3). Un favori qui gagne marque peu, un outsider qui gagne marque beaucoup.</p>
+    <div class="grid2" style="margin-bottom:12px">
+      <label>Points de base (écart nul)<input type="number" class="num" value="${k.base}" data-ch="chCfg" data-f="base" data-key="cb"></label>
+      <label>Points par place d'écart<input type="number" class="num" step="0.5" value="${k.perRank}" data-ch="chCfg" data-f="perRank" data-key="cp"></label>
+      <label>Gain minimum<input type="number" class="num" value="${k.min}" data-ch="chCfg" data-f="min" data-key="cmin"></label>
+      <label>Gain maximum<input type="number" class="num" value="${k.max}" data-ch="chCfg" data-f="max" data-key="cmax"></label>
+    </div>
+    <div class="row-f" style="margin-bottom:12px">
+      <button class="toggle ${k.loserLoses ? "on" : ""}" data-act="chLoser">${k.loserLoses ? "Le perdant perd des points" : "Le perdant marque des points"}</button>
+      ${!k.loserLoses ? `<label class="row-f">Il marque <input type="number" class="num" min="0" value="${k.lose}" data-ch="chCfg" data-f="lose" data-key="close"> pt(s) de participation</label>` : ""}
+      ${k.loserLoses ? `<label class="row-f">Il perd <input type="number" class="num" value="${k.loserPct}" data-ch="chCfg" data-f="loserPct" data-key="cpct"> % du gain du vainqueur</label>` : ""}
+    </div>
+    <div class="tw"><table class="bar"><tr><th>Écart de places</th>${ex.map(e => `<th>${e}</th>`).join("")}</tr>
+      <tr><th>Le mieux classé gagne</th>${ex.map(e => `<td>+${chGain(1, 1 + e)}</td>`).join("")}</tr>
+      <tr><th>Le moins bien classé gagne</th>${ex.map(e => `<td>+${chGain(1 + e, 1)}</td>`).join("")}</tr></table></div>
+  </section>`;
+  const recent = c.history.filter(x => x.kind === "defi").slice(0, 8);
+  if (recent.length) h += `<section class="card"><h2>Derniers défis</h2>${recent.map(histRow).join("")}</section>`;
+  return h;
+}
+
+function histRow(x){
+  const d = new Date(x.t);
+  return `<div class="hist"><time>${d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })} ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</time>
+    <div>${esc(x.text)}</div><button class="btn" data-act="undo" data-id="${x.id}">Annuler</button></div>`;
+}
+function vHisto(){
+  const c = C();
+  if (!c.history.length) return empty("Aucune attribution de points pour cette classe.");
+  return `<section class="card"><div class="row-f" style="margin-bottom:6px"><h2 style="margin:0;flex:1">Historique</h2>
+    <button class="btn danger" data-act="clearHist">Vider l'historique</button></div>
+    <p class="muted" style="margin-top:0;font-size:.92rem">« Annuler » retire exactement les points de cette ligne. Vider l'historique ne change pas les points.</p>
+    ${c.history.map(histRow).join("")}</section>`;
+}
+function vSave(){
+  return `<section class="card"><h2>Fonctionnement hors ligne</h2>
+    <p style="margin-top:0">Toutes les données sont enregistrées automatiquement dans ce navigateur, sur cet appareil. Rien n'est envoyé sur internet. Un autre navigateur ou un autre appareil ne voit pas les mêmes données : utilisez l'export pour les transférer ou les mettre à l'abri.</p></section>
+  <section class="card"><h2>Sauvegarder et transférer</h2><div class="row-f">
+    <button class="btn primary" data-act="exportJson">Exporter toutes les classes (.json)</button>
+    <button class="btn" data-act="importJson">Importer une sauvegarde</button>
+    <button class="btn" data-act="exportCsv">Exporter le classement de la classe (.csv pour Excel)</button></div></section>
+  <section class="card"><h2>Tout effacer</h2><p class="muted" style="margin-top:0">Supprime toutes les classes et tous les points de ce navigateur.</p>
+    <button class="btn danger" data-act="resetAll">Tout effacer</button></section>`;
+}
+
+/* ====== Classes ====== */
+function vClasses(){
+  const a = A();
+  let h = `<section class="card"><h2>Mes activités</h2>
+    <p class="muted" style="margin-top:0;font-size:.92rem">Chaque activité a ses propres classements, équipes, tournois, défis et réglages. Les listes d'élèves des classes sont communes à toutes les activités.</p>
+    ${S.activities.map(x => `<div class="cls ${x.id === a.id ? "on" : ""}">
+      <input class="txt" data-ch="renameAct" data-id="${x.id}" value="${esc(x.name)}" aria-label="Nom de l'activité">
+      <span style="font-size:1.5rem;text-align:center">${x.icon}</span>
+      <button class="btn ${x.id === a.id ? "primary" : ""}" data-act="openAct" data-id="${x.id}">${x.id === a.id ? "Activité choisie" : "Choisir"}</button>
+      <button class="x" data-act="delAct" data-id="${x.id}" aria-label="Supprimer l'activité ${esc(x.name)}">×</button></div>`).join("")}
+    <div class="row-f" style="margin-top:12px"><button class="btn" data-act="newAct">Nouvelle activité</button></div>
+    <h3 style="margin-top:18px">Icône de « ${esc(a.name)} »</h3>
+    <div class="icons">${ACT_ICONS.map(i => `<button class="${i === a.icon ? "on" : ""}" data-act="actIcon" data-v="${i}">${i}</button>`).join("")}</div>
+    <h3 style="margin-top:14px">Couleur</h3>
+    <div class="row-f">${ACT_COLORS.map(col => `<button class="sw ${col === a.color ? "on" : ""}" style="--c:${col}" data-act="actColor" data-v="${col}" aria-label="Couleur"></button>`).join("")}</div>
+  </section>
+  <section class="card"><h2>Mes classes</h2>
+    <p class="muted" style="margin-top:0;font-size:.92rem">La classe choisie s'utilise dans tous les onglets. On peut aussi en changer à tout moment avec la barre en haut de l'écran.</p>
+    ${S.classes.map(k => `<div class="cls ${k.id === S.cur ? "on" : ""}">
+      <input class="txt" data-ch="renameClassId" data-id="${k.id}" value="${esc(k.name)}" aria-label="Nom de la classe">
+      <span class="muted">${plural(k.students.length, "élève")}</span>
+      <button class="btn ${k.id === S.cur ? "primary" : ""}" data-act="openClass" data-id="${k.id}">${k.id === S.cur ? "Classe choisie" : "Choisir"}</button>
+      <button class="x" data-act="delClass" data-id="${k.id}" aria-label="Supprimer la classe ${esc(k.name)}">×</button></div>`).join("")}
+    <div class="row-f" style="margin-top:12px"><button class="btn" data-act="newClass">Nouvelle classe</button></div></section>`;
+  return h + vImport();
+}
+
+/* ====== Import Excel / CSV (sans connexion) ====== */
+const colLetter = i => { let s = ""; i++; while (i > 0){ const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
+const colIndex = ref => { const m = /^[A-Z]+/.exec(ref); let n = 0; for (const ch of m[0]) n = n * 26 + ch.charCodeAt(0) - 64; return n - 1; };
+async function readZip(buf){
+  const dv = new DataView(buf), u8 = new Uint8Array(buf);
+  let e = -1;
+  for (let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50){ e = i; break; }
+  if (e < 0) throw new Error("zip");
+  const cnt = dv.getUint16(e + 10, true); let off = dv.getUint32(e + 16, true);
+  const files = {}, td = new TextDecoder();
+  for (let n = 0; n < cnt; n++){
+    if (dv.getUint32(off, true) !== 0x02014b50) break;
+    const method = dv.getUint16(off + 10, true), csize = dv.getUint32(off + 20, true);
+    const nlen = dv.getUint16(off + 28, true), xlen = dv.getUint16(off + 30, true), clen = dv.getUint16(off + 32, true), lho = dv.getUint32(off + 42, true);
+    files[td.decode(u8.subarray(off + 46, off + 46 + nlen))] = { method, csize, lho };
+    off += 46 + nlen + xlen + clen;
+  }
+  const get = async name => {
+    const f = files[name]; if (!f) return null;
+    const start = f.lho + 30 + dv.getUint16(f.lho + 26, true) + dv.getUint16(f.lho + 28, true);
+    const data = u8.subarray(start, start + f.csize);
+    if (f.method === 0) return td.decode(data);
+    const out = await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer();
+    return td.decode(out);
+  };
+  return { get };
+}
+async function parseXlsx(buf){
+  const z = await readZip(buf), P = new DOMParser();
+  const xml = s => P.parseFromString(s, "application/xml");
+  const tags = (el, n) => [...el.getElementsByTagNameNS("*", n)];
+  const wbTxt = await z.get("xl/workbook.xml"); if (!wbTxt) throw new Error("zip");
+  const wb = xml(wbTxt), rels = {};
+  const relTxt = await z.get("xl/_rels/workbook.xml.rels");
+  if (relTxt) tags(xml(relTxt), "Relationship").forEach(r => rels[r.getAttribute("Id")] = r.getAttribute("Target"));
+  const ssTxt = await z.get("xl/sharedStrings.xml");
+  const ss = ssTxt ? tags(xml(ssTxt), "si").map(si => tags(si, "t").filter(t => t.parentNode.localName !== "rPh").map(t => t.textContent).join("")) : [];
+  const sheets = [];
+  for (const sh of tags(wb, "sheet")){
+    const rid = sh.getAttribute("r:id") || sh.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id");
+    let target = rels[rid]; if (!target) continue;
+    target = target.startsWith("/") ? target.slice(1) : (target.startsWith("xl/") ? target : "xl/" + target);
+    const txt = await z.get(target); if (!txt) continue;
+    const rows = [];
+    tags(xml(txt), "row").forEach(r => {
+      const ri = (+r.getAttribute("r") || rows.length + 1) - 1, row = [];
+      tags(r, "c").forEach(c => {
+        const ref = c.getAttribute("r"), col = ref ? colIndex(ref) : row.length, t = c.getAttribute("t");
+        const v = tags(c, "v")[0];
+        let val = "";
+        if (t === "s") val = v ? (ss[+v.textContent] ?? "") : "";
+        else if (t === "inlineStr") val = tags(c, "t").map(x => x.textContent).join("");
+        else val = v ? v.textContent : "";
+        row[col] = val;
+      });
+      rows[ri] = row;
+    });
+    sheets.push({ name: sh.getAttribute("name") || "Feuille", rows });
+  }
+  return sheets;
+}
+function parseCsv(text){
+  text = text.replace(/^\ufeff/, "");
+  const first = text.split(/\r?\n/)[0] || "";
+  const d = [";", "\t", ","].sort((a, b) => first.split(b).length - first.split(a).length)[0];
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++){
+    const ch = text[i];
+    if (q){ if (ch === '"'){ if (text[i + 1] === '"'){ f += '"'; i++; } else q = false; } else f += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === d){ row.push(f); f = ""; }
+    else if (ch === "\n"){ row.push(f); rows.push(row); row = []; f = ""; }
+    else if (ch !== "\r") f += ch;
+  }
+  if (f || row.length){ row.push(f); rows.push(row); }
+  return rows;
+}
+async function readImportFile(f){
+  try {
+    const buf = await f.arrayBuffer(), head = new Uint8Array(buf.slice(0, 4));
+    let sheets;
+    if (head[0] === 0x50 && head[1] === 0x4b){
+      if (typeof DecompressionStream === "undefined") throw new Error("Ce navigateur est trop ancien pour lire les fichiers Excel. Mettez-le à jour, ou enregistrez le fichier au format CSV depuis Excel.");
+      sheets = await parseXlsx(buf);
+    } else if (head[0] === 0xd0 && head[1] === 0xcf){
+      throw new Error("Les anciens fichiers .xls ne peuvent pas être lus. Dans Excel, faites « Enregistrer sous » au format .xlsx puis importez ce fichier.");
+    } else {
+      let t; try { t = new TextDecoder("utf-8", { fatal: true }).decode(buf); } catch(e){ t = new TextDecoder("windows-1252").decode(buf); }
+      sheets = [{ name: f.name.replace(/\.[^.]+$/, ""), rows: parseCsv(t) }];
+    }
+    sheets = sheets.map(s => ({ name: String(s.name).trim(), rows: Array.from(s.rows, r => Array.from(r || [], v => v == null ? "" : String(v).replace(/\s+/g, " ").trim())) }))
+                   .filter(s => s.rows.some(r => r.some(Boolean)));
+    if (!sheets.length) throw new Error("Ce fichier ne contient aucune donnée.");
+    imp = { file: f.name, sheets, mode: "sheets", header: false, sheet: 0, use: sheets.map(() => true), nameCol: 0, firstCol: -1, classCol: -1 };
+    guessImport();
+    view = "classes"; render();
+  } catch(e){
+    toast(e && e.message && e.message !== "zip" ? e.message : "Impossible de lire ce fichier. Vérifiez qu'il s'agit bien d'un fichier Excel (.xlsx) ou CSV.");
+  }
+}
+const firstRow = rows => rows.find(r => r.some(Boolean)) || [];
+const dataRows = rows => { const ne = rows.filter(r => r.some(Boolean)); return imp.header ? ne.slice(1) : ne; };
+function guessImport(){
+  const h = firstRow(imp.sheets[0].rows).map(v => v.toLowerCase());
+  const find = re => h.findIndex(v => re.test(v));
+  const full = find(/nom.*pr[ée]nom|pr[ée]nom.*nom|[ée]l[èe]ve|identit/);
+  const nom = h.findIndex(v => /(^|[\s_\-.'])nom/.test(v) && !/pr[ée]nom/.test(v));
+  const pre = find(/pr[ée]nom/);
+  const cls = find(/classe|division|groupe|^div/);
+  imp.header = full >= 0 || nom >= 0 || pre >= 0 || cls >= 0;
+  if (full >= 0 && nom < 0){ imp.nameCol = full; imp.firstCol = -1; }
+  else { imp.nameCol = nom >= 0 ? nom : (full >= 0 ? full : 0); imp.firstCol = pre >= 0 && pre !== imp.nameCol && full !== pre ? pre : -1; }
+  imp.classCol = cls;
+  imp.mode = cls >= 0 ? "column" : "sheets";
+}
+function impClasses(){
+  const out = new Map();
+  const push = (cn, n) => {
+    cn = String(cn || "").trim(); if (!cn || !n) return;
+    if (!out.has(cn)) out.set(cn, []);
+    const arr = out.get(cn); if (!arr.some(x => x.toLowerCase() === n.toLowerCase())) arr.push(n);
+  };
+  const nameOf = r => [r[imp.nameCol] || "", imp.firstCol >= 0 ? r[imp.firstCol] || "" : ""].map(s => s.trim()).filter(Boolean).join(" ");
+  if (imp.mode === "column"){
+    if (imp.classCol < 0) return [];
+    dataRows(imp.sheets[imp.sheet].rows).forEach(r => push(r[imp.classCol], nameOf(r)));
+  } else imp.sheets.forEach((s, i) => { if (imp.use[i]) dataRows(s.rows).forEach(r => push(s.name, nameOf(r))); });
+  return [...out].map(([name, students]) => ({ name, students }));
+}
+const sameName = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
+function vImport(){
+  if (!imp) return `<section class="card"><h2>Importer des classes depuis Excel</h2>
+    <p style="margin-top:0">Deux présentations sont reconnues : <b>une feuille par classe</b> (le nom de la feuille devient le nom de la classe), ou <b>une seule feuille avec une colonne « Classe »</b>. Les noms et prénoms peuvent être dans une même colonne ou dans deux colonnes.</p>
+    <p class="muted" style="font-size:.92rem">Fichiers acceptés : .xlsx et .csv. La lecture se fait sur l'appareil, sans connexion. Si une classe existe déjà, seuls les élèves absents de la liste sont ajoutés.</p>
+    <button class="btn primary" data-act="pickXlsx">Choisir un fichier Excel</button></section>`;
+  const ref = imp.mode === "column" ? imp.sheets[imp.sheet].rows : (imp.sheets.find((s, i) => imp.use[i]) || imp.sheets[0]).rows;
+  const fr = firstRow(ref);
+  const ncol = Math.max(1, ...ref.slice(0, 300).map(r => r.length));
+  const colOpts = (cur, none) => (none ? `<option value="-1" ${cur === -1 ? "selected" : ""}>${none}</option>` : "") +
+    [...Array(ncol).keys()].map(i => `<option value="${i}" ${cur === i ? "selected" : ""}>Colonne ${colLetter(i)}${fr[i] ? " : " + esc(fr[i].slice(0, 40)) : ""}</option>`).join("");
+  const classes = impClasses(), total = classes.reduce((a, k) => a + k.students.length, 0);
+  let h = `<section class="card"><div class="row-f" style="margin-bottom:10px"><h2 style="margin:0;flex:1">Import : ${esc(imp.file)}</h2>
+      <button class="btn" data-act="pickXlsx">Changer de fichier</button><button class="btn danger" data-act="impCancel">Annuler</button></div>
+    <div class="row-f" style="margin-bottom:12px"><div class="seg">
+      <button class="${imp.mode === "sheets" ? "on" : ""}" data-act="impMode" data-v="sheets">Une feuille par classe</button>
+      <button class="${imp.mode === "column" ? "on" : ""}" data-act="impMode" data-v="column">Une colonne indique la classe</button></div>
+      <button class="toggle ${imp.header ? "on" : ""}" data-act="impHeader">${imp.header ? "1re ligne = titres (ignorée)" : "1re ligne = un élève"}</button></div>`;
+  if (imp.mode === "sheets"){
+    h += `<span class="lbl">Feuilles à importer (une classe par feuille)</span><div class="pres" style="margin-bottom:12px">${imp.sheets.map((s, i) => `<button class="${imp.use[i] ? "on" : ""}" data-act="impUse" data-i="${i}">${esc(s.name)}</button>`).join("")}</div>`;
+  }
+  h += `<div class="row-f" style="margin-bottom:6px">
+    ${imp.mode === "column" && imp.sheets.length > 1 ? `<label class="field">Feuille<select class="sel" data-ch="impSheet">${imp.sheets.map((s, i) => `<option value="${i}" ${i === imp.sheet ? "selected" : ""}>${esc(s.name)}</option>`).join("")}</select></label>` : ""}
+    ${imp.mode === "column" ? `<label class="field">Colonne de la classe<select class="sel" data-ch="impCol" data-f="classCol">${colOpts(imp.classCol, "À choisir")}</select></label>` : ""}
+    <label class="field">Colonne du nom<select class="sel" data-ch="impCol" data-f="nameCol">${colOpts(imp.nameCol)}</select></label>
+    <label class="field">Colonne du prénom<select class="sel" data-ch="impCol" data-f="firstCol">${colOpts(imp.firstCol, "Aucune (nom complet dans une colonne)")}</select></label>
+  </div></section>`;
+  h += `<section class="card"><h2>Aperçu</h2>`;
+  if (!classes.length) h += `<p class="muted">${imp.mode === "column" && imp.classCol < 0 ? "Choisissez la colonne qui contient la classe." : "Aucun élève trouvé avec ces réglages. Vérifiez les colonnes choisies."}</p>`;
+  else {
+    h += classes.map(k => {
+      const ex = S.classes.find(c => sameName(c.name, k.name));
+      const fresh = ex ? k.students.filter(n => !ex.students.some(s => sameName(s.name, n))).length : k.students.length;
+      return `<div class="imp-cls"><b>${esc(k.name)}</b> <span class="muted">${plural(k.students.length, "élève")}</span>
+        ${ex ? `<span class="tag old">Classe existante : ${fresh ? `+${fresh} ${fresh > 1 ? "nouveaux" : "nouvel"} élève${fresh > 1 ? "s" : ""}` : "rien à ajouter"}</span>` : `<span class="tag">Nouvelle classe</span>`}
+        <p class="muted">${k.students.slice(0, 6).map(esc).join(", ")}${k.students.length > 6 ? "…" : ""}</p></div>`;
+    }).join("");
+    h += `<div class="row-f" style="margin-top:10px"><button class="btn primary" data-act="doImport">Importer ${plural(classes.length, "classe")} (${plural(total, "élève")})</button></div>`;
+  }
+  return h + `</section>`;
+}
+function doImport(){
+  const classes = impClasses(); if (!classes.length) return;
+  let added = 0, created = 0, firstId = null;
+  classes.forEach(k => {
+    let c = S.classes.find(x => sameName(x.name, k.name));
+    if (!c){
+      // remplace la classe vide créée par défaut
+      const blank = S.classes.length === 1 && !S.classes[0].students.length && S.classes[0].name === "Ma classe" ? S.classes[0] : null;
+      if (blank) blank.name = k.name; else S.classes.push(newClass(k.name));
+      c = blank || S.classes[S.classes.length - 1]; created++;
+    }
+    firstId ||= c.id;
+    k.students.forEach(n => { if (!c.students.some(s => sameName(s.name, n))){ c.students.push({ id: uid(), name: n, present: true }); added++; } });
+  });
+  S.cur = firstId; imp = null; sel.clear(); chSel = { a: [], b: [] }; swapSel = null;
+  save(); render();
+  toast(`${plural(added, "élève")} importé${added > 1 ? "s" : ""}${created ? `, ${plural(created, "classe")} créée${created > 1 ? "s" : ""}` : ""}.`);
+}
+
+/* ====== Actions ====== */
+function download(name, text, type){
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
+}
+const today = () => new Date().toISOString().slice(0, 10);
+const ACT = {
+  tab: el => { view = el.dataset.v; swapSel = null; render(); window.scrollTo(0, 0); },
+  step: el => { ST().step = +el.dataset.v; save(); render(); },
+  add: el => give([el.dataset.id], ST().step),
+  sub: el => give([el.dataset.id], -ST().step),
+  toggleSel: el => { const id = el.dataset.id; sel.has(id) ? sel.delete(id) : sel.add(id); render(); },
+  selAdd: () => { give([...sel], ST().step); },
+  selSub: () => { give([...sel], -ST().step); },
+  selClear: () => { sel.clear(); render(); },
+  newClass: () => { const n = prompt("Nom de la nouvelle classe :", ""); if (!n || !n.trim()) return; const c = newClass(n.trim()); S.classes.push(c); S.cur = c.id; sel.clear(); chSel = { a: [], b: [] }; save(); render(); },
+  openClass: el => { S.cur = el.dataset.id; switchCtx(); },
+  openAct: el => { S.curAct = el.dataset.id; switchCtx(); },
+  newAct: () => {
+    const n = prompt("Nom de la nouvelle activité (ex. : Basket, Badminton, Course d'orientation) :", ""); if (!n || !n.trim()) return;
+    const used = S.activities.map(x => x.color), col = ACT_COLORS.find(c => !used.includes(c)) || ACT_COLORS[S.activities.length % ACT_COLORS.length];
+    const a = newActivity(n.trim(), ST(), col); S.activities.push(a); S.curAct = a.id; switchCtx();
+    toast(`Activité « ${a.name} » créée. Ses réglages reprennent ceux de l'activité précédente.`);
+  },
+  delAct: el => {
+    if (S.activities.length < 2){ toast("Il faut garder au moins une activité."); return; }
+    const a = S.activities.find(x => x.id === el.dataset.id); if (!a || !confirm(`Supprimer l'activité « ${a.name} » avec tous ses classements, équipes et tournois ? Les classes et les élèves sont conservés.`)) return;
+    S.activities = S.activities.filter(x => x.id !== a.id);
+    Object.keys(S.recs).forEach(key => { if (key.startsWith(a.id + "|")) delete S.recs[key]; });
+    if (S.curAct === a.id) S.curAct = S.activities[0].id; switchCtx();
+  },
+  actIcon: el => { A().icon = el.dataset.v; save(); render(); },
+  actColor: el => { A().color = el.dataset.v; save(); render(); },
+  pickXlsx: () => document.getElementById("xlsIn").click(),
+  impCancel: () => { imp = null; render(); },
+  impMode: el => { imp.mode = el.dataset.v; render(); },
+  impHeader: () => { imp.header = !imp.header; render(); },
+  impUse: el => { const i = +el.dataset.i; imp.use[i] = !imp.use[i]; render(); },
+  doImport: () => doImport(),
+  delClass: el => { const c = S.classes.find(x => x.id === el.dataset.id) || C(); if (!confirm(`Supprimer la classe « ${c.name} », ses élèves et ses points dans toutes les activités ?`)) return; S.classes = S.classes.filter(x => x.id !== c.id); Object.keys(S.recs).forEach(key => { if (key.endsWith("|" + c.id)) delete S.recs[key]; }); if (!S.classes.length) S.classes.push(newClass("Ma classe")); S.cur = S.classes[0].id; save(); render(); },
+  addStudents: () => {
+    const ta = document.getElementById("newNames"); const c = C();
+    const names = ta.value.split(/\r?\n|;|\t/).map(s => s.trim()).filter(Boolean);
+    if (!names.length){ toast("Saisissez au moins un nom."); return; }
+    names.forEach(n => c._k.students.push({ id: uid(), name: n, present: true }));
+    save(); render(); toast(`${plural(names.length, "élève")} ajouté${names.length > 1 ? "s" : ""}.`);
+  },
+  delStudent: el => {
+    const c = C(), s = stu(el.dataset.id); if (!s || !confirm(`Supprimer ${s.name} ?`)) return;
+    c.students = c.students.filter(x => x.id !== s.id);
+    if (c.teams) c.teams.forEach(t => t.members = t.members.filter(id => id !== s.id));
+    sel.delete(s.id); save(); render();
+  },
+  togglePresent: el => { const s = stu(el.dataset.id); s.present = s.present === false; save(); render(); },
+  allPresent: () => { C().students.forEach(s => s.present = true); save(); render(); },
+  nonePresent: () => { C().students.forEach(s => s.present = false); save(); render(); },
+  resetPoints: () => { if (!confirm("Remettre tous les points à 0 ?")) return; track(() => applyChanges(C().students.map(s => ({ sid: s.id, delta: -s.points })), "Remise à zéro des points")); render(); },
+  teamMode: el => { ST().team.mode = el.dataset.v; save(); render(); },
+  teamBy: el => { ST().team.by = el.dataset.v; save(); render(); },
+  makeTeams: () => { const c = C(); if (c.tour && c.teams && !confirm("Les nouvelles équipes ne modifient pas le tournoi déjà créé. Continuer ?")) return; buildTeams(false); },
+  reshuffle: () => buildTeams(true),
+  clearTeams: () => { C().teams = null; swapSel = null; save(); render(); },
+  pickMember: el => {
+    const id = el.dataset.id, c = C();
+    if (!swapSel){ swapSel = id; render(); return; }
+    if (swapSel === id){ swapSel = null; render(); return; }
+    const tA = c.teams.find(t => t.members.includes(swapSel)), tB = c.teams.find(t => t.members.includes(id));
+    if (tA === tB){ swapSel = id; render(); return; }
+    tA.members[tA.members.indexOf(swapSel)] = id; tB.members[tB.members.indexOf(id)] = swapSel;
+    const { rank } = ranking(c); [tA, tB].forEach(t => t.members.sort((x, y) => rank.get(x) - rank.get(y)));
+    swapSel = null; save(); render();
+  },
+  tourMode: el => { ST().tour.mode = el.dataset.v; save(); render(); },
+  genTour: () => genTour(),
+  delTour: () => { if (!confirm("Supprimer ce tournoi ? Les points déjà distribués restent au classement.")) return; C().tour = null; save(); render(); },
+  award: () => awardTour(),
+  chFmt: el => { ST().chFmt = +el.dataset.v; save(); render(); },
+  chSwap: () => { chSel = { a: chSel.b, b: chSel.a }; render(); },
+  chClear: () => { chSel = { a: [], b: [] }; render(); },
+  chWin: el => chWin(el.dataset.v),
+  chLoser: () => { ST().ch.loserLoses = !ST().ch.loserLoses; save(); render(); },
+  undo: el => {
+    const c = C(), i = c.history.findIndex(x => x.id === el.dataset.id); if (i < 0) return;
+    const hEntry = c.history[i];
+    track(() => { hEntry.changes.forEach(ch => { const s = stu(ch.sid, c); if (s){ s.points -= ch.delta; flashIds.add(s.id); } }); c.history.splice(i, 1); });
+    save(); render(); toast("Attribution annulée.");
+  },
+  clearHist: () => { if (!confirm("Vider l'historique ? Les points restent inchangés mais ne pourront plus être annulés.")) return; C().history = []; save(); render(); },
+  exportJson: () => { download(`classement-sauvegarde-${today()}.json`, JSON.stringify(S, null, 1), "application/json"); toast("Sauvegarde exportée."); },
+  importJson: () => document.getElementById("fileIn").click(),
+  exportCsv: () => {
+    const c = C(), { list, rank } = ranking(c);
+    const q = v => `"${String(v).replace(/"/g, '""')}"`;
+    const lines = ["Rang;Élève;Points;Présent", ...list.map(s => [rank.get(s.id), q(s.name), s.points, s.present !== false ? "oui" : "non"].join(";"))];
+    download(`classement-${A().name.replace(/[^\p{L}\p{N}_-]+/gu, "_")}-${c.name.replace(/[^\p{L}\p{N}_-]+/gu, "_")}-${today()}.csv`, "\ufeff" + lines.join("\r\n"), "text/csv");
+  },
+  resetAll: () => { if (!confirm("Effacer toutes les classes et tous les points de ce navigateur ?")) return; S = defaultState(); sel.clear(); chSel = { a: [], b: [] }; save(); view = "classes"; render(); }
+};
+const CH = {
+  step: el => { const v = Math.max(1, Math.round(+el.value || 1)); ST().step = v; save(); setTimeout(rerender, 0); },
+  renameAct: el => { const v = el.value.trim(), a = S.activities.find(x => x.id === el.dataset.id); if (a && v){ a.name = v; save(); } setTimeout(rerender, 0); },
+  renameClassId: el => { const v = el.value.trim(), k = S.classes.find(x => x.id === el.dataset.id); if (k && v){ k.name = v; save(); } setTimeout(rerender, 0); },
+  impSheet: el => { imp.sheet = +el.value; setTimeout(rerender, 0); },
+  impCol: el => { imp[el.dataset.f] = +el.value; setTimeout(rerender, 0); },
+  renameClass: el => { const v = el.value.trim(); if (v){ C().name = v; save(); } setTimeout(rerender, 0); },
+  renameStudent: el => { const v = el.value.trim(); const s = stu(el.dataset.id); if (s && v){ s.name = v; save(); } setTimeout(rerender, 0); },
+  teamN: el => { ST().team.n = Math.max(2, Math.round(+el.value || 2)); save(); setTimeout(rerender, 0); },
+  teamK: el => { ST().team.k = Math.max(1, Math.round(+el.value || 1)); save(); setTimeout(rerender, 0); },
+  tourPools: el => { ST().tour.pools = Math.max(1, Math.round(+el.value || 1)); save(); setTimeout(rerender, 0); },
+  tourCfg: el => { ST().tour[el.dataset.f] = Math.round(+el.value || 0); save(); setTimeout(rerender, 0); },
+  score: el => {
+    const m = C().tour.pools.flatMap(p => p.matches).find(x => x.id === el.dataset.mid); if (!m) return;
+    const v = el.value === "" ? null : Math.max(0, Math.round(+el.value));
+    m[el.dataset.side === "a" ? "sa" : "sb"] = v; save(); setTimeout(rerender, 0);
+  },
+  chPick: el => { chSel[el.dataset.side][+el.dataset.i] = el.value; setTimeout(rerender, 0); },
+  chCfg: el => { const f = el.dataset.f; ST().ch[f] = Math.max(0, +el.value || 0); save(); setTimeout(rerender, 0); }
+};
+
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-act]"); if (!el || el.disabled) return;
+  const fn = ACT[el.dataset.act]; if (fn) fn(el);
+});
+document.addEventListener("change", e => {
+  const el = e.target;
+  if (el.id === "xlsIn"){ const f = el.files[0]; el.value = ""; if (f) readImportFile(f); return; }
+  if (el.id === "fileIn"){
+    const f = el.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try { const d = normalize(JSON.parse(r.result)); if (!confirm("Remplacer toutes les données actuelles par cette sauvegarde ?")) return; S = d; save(); render(); toast("Sauvegarde importée."); }
+      catch(err){ toast("Ce fichier n'est pas une sauvegarde valide."); }
+      el.value = "";
+    };
+    r.readAsText(f); return;
+  }
+  const fn = CH[el.dataset.ch]; if (fn) fn(el);
+});
+document.addEventListener("input", e => { if (e.target.dataset.in === "motif") motif = e.target.value; });
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.matches("input[data-ch]")) e.target.blur();
+});
+let toastT;
+function toast(msg, ms){ const t = document.getElementById("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), ms || Math.max(2600, msg.length * 55)); }
+
+if (!C().students.length) view = "classes";
+render();
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>
