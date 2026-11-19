@@ -110,10 +110,17 @@ li.p1{--c:var(--gold)} li.p2{--c:var(--silver)} li.p3{--c:var(--bronze)}
 }
 
 /* Élèves */
-.stu{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.stu{display:grid;grid-template-columns:auto auto 1fr auto auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
 .stu:last-child{border-bottom:0}
 .toggle{border:1.5px solid var(--line);border-radius:999px;padding:5px 11px;background:transparent;font-size:.85rem;font-weight:600;min-width:84px}
 .toggle.on{background:color-mix(in srgb,var(--green) 16%,transparent);border-color:var(--green);color:var(--green)}
+.sx{width:44px;height:40px;border-radius:9px;border:1.5px dashed var(--line);background:transparent;font-weight:700;font-family:var(--num);font-size:1.05rem;color:var(--muted)}
+.sx.F,.sx.G{border-style:solid;border-color:var(--court);background:var(--court-soft);color:var(--ink)}
+.sxt{font-size:.75rem;font-weight:700;color:var(--muted);margin-left:4px}
+.mixbox{border:1.5px dashed var(--court);border-radius:10px;padding:10px 12px;margin-top:12px}
+.mixrow{display:flex;gap:8px;align-items:center;padding:4px 0}
+.mixrow span{flex:1}
+.mixrow button{min-width:74px}
 .x{border:0;background:transparent;color:var(--red);font-size:1.4rem;width:40px;height:40px;border-radius:8px}
 
 /* Présences */
@@ -218,7 +225,7 @@ const TEAM_COLORS = [["Rouge","#d64545"],["Bleue","#3b6fd6"],["Verte","#2f9e5b"]
 function defaultSettings(){
   return {
     step: 1,
-    team: { mode: "homo", by: "count", n: 4, k: 4 },
+    team: { mode: "homo", by: "count", n: 4, k: 4, mix: false },
     tour: { mode: "rr", pools: 2, w: 3, d: 1, l: 0, sw: 3, sd: 1, sl: 0 },
     chFmt: 1,
     ch: { base: 10, perRank: 2, min: 2, max: 30, loserLoses: false, loserPct: 50, lose: 1 }
@@ -253,7 +260,7 @@ function normalize(s){
   }
   delete s.settings;
   s.classes.forEach(c => {
-    c.students = (c.students || []).map(st => ({ id: st.id, name: st.name, present: st.present !== false }));
+    c.students = (c.students || []).map(st => ({ id: st.id, name: st.name, present: st.present !== false, sex: st.sex === "F" || st.sex === "G" ? st.sex : "" }));
     delete c.history; delete c.teams; delete c.tour;
   });
   s.activities.forEach(a => { a.settings = normSettings(a.settings); a.icon ||= guessIcon(a.name); a.color ||= ACT_COLORS[0]; });
@@ -277,6 +284,7 @@ function C(){
   const k = K(), r = rec(A().id, k.id);
   const wrap = s => ({ _s: s, get id(){ return s.id; }, get name(){ return s.name; }, set name(v){ s.name = v; },
     get present(){ return s.present; }, set present(v){ s.present = v; },
+    get sex(){ return s.sex || ""; }, set sex(v){ s.sex = v; },
     get points(){ return r.pts[s.id] || 0; }, set points(v){ r.pts[s.id] = v; } });
   return { _k: k, _r: r, id: k.id, get name(){ return k.name; }, set name(v){ k.name = v; },
     get students(){ return k.students.map(wrap); }, set students(v){ k.students = v.map(w => w._s || w); },
@@ -349,12 +357,41 @@ function buildTeams(shuffle){
     const [nm, col] = TEAM_COLORS[i % TEAM_COLORS.length];
     return { id: uid(), name: "Équipe " + nm + (i >= TEAM_COLORS.length ? " " + (Math.floor(i / TEAM_COLORS.length) + 1) : ""), color: col, members: [] };
   });
-  if (cfg.mode === "niveau"){
+  const mix = !!cfg.mix;
+  const SX = new Map(pres.map(s => [s.id, s.sex || ""]));
+  if (mix){
+    // Mixité : chaque groupe (filles, garçons, non renseignés) est réparti à parts égales entre les équipes
+    const groups = ["F", "G", ""].map(k => pres.filter(s => (s.sex || "") === k)).filter(g => g.length);
+    const cnt = new Array(n).fill(0);
+    const quotas = groups.map(g => {
+      const q = new Array(n).fill(Math.floor(g.length / n));
+      q.forEach((v, t) => cnt[t] += v);
+      const order = [...Array(n).keys()].sort((a, b) => cnt[a] - cnt[b] || a - b);
+      for (let i = 0; i < g.length % n; i++){ q[order[i]]++; cnt[order[i]]++; }
+      return q;
+    });
+    if (cfg.mode === "niveau"){
+      groups.forEach((g, gi) => { let i = 0; teams.forEach((t, ti) => { const k = quotas[gi][ti]; t.members.push(...g.slice(i, i + k).map(s => s.id)); i += k; }); });
+    } else {
+      const tot = new Array(n).fill(0);
+      groups.forEach((g, gi) => {
+        const left = [...quotas[gi]], got = new Array(n).fill(0);
+        g.forEach((s, idx) => {
+          const cand = [...Array(n).keys()].filter(k => left[k] > 0).map(k => ({ k, r: Math.random() }));
+          cand.sort((a, b) => got[a.k] - got[b.k] || tot[a.k] - tot[b.k] || (shuffle ? a.r - b.r : (idx / n | 0) % 2 ? b.k - a.k : a.k - b.k));
+          const k = cand[0].k; teams[k].members.push(s.id); tot[k] += s.points; left[k]--; got[k]++;
+        });
+      });
+    }
+  }
+  if (mix && cfg.mode === "niveau"){
+    // déjà réparti
+  } else if (cfg.mode === "niveau"){
     const base = Math.floor(N / n), extra = N % n; let i = 0;
     teams.forEach((t, ti) => { const sz = base + (ti < extra ? 1 : 0); t.members = pres.slice(i, i + sz).map(s => s.id); i += sz; });
   } else {
     const tot = new Array(n).fill(0);
-    for (let i = 0; i < N; i += n){
+    if (!mix) for (let i = 0; i < N; i += n){
       const tier = pres.slice(i, i + n);
       const order = [...Array(n).keys()].map(k => ({ k, t: tot[k], c: teams[k].members.length, r: Math.random() }));
       order.sort((a, b) => a.c - b.c || a.t - b.t || (shuffle ? a.r - b.r : (i / n) % 2 ? b.k - a.k : a.k - b.k));
@@ -372,6 +409,7 @@ function buildTeams(shuffle){
         const cost = (x, y) => (x / la - g) ** 2 + (y / lb - g) ** 2;
         let best = null, bestV = cost(sa, sb) - 1e-9;
         for (let i = 0; i < la; i++) for (let j = 0; j < lb; j++){
+          if (mix && SX.get(A.members[i]) !== SX.get(B.members[j])) continue;
           const d = P.get(B.members[j]) - P.get(A.members[i]);
           const v = cost(sa + d, sb - d);
           if (v < bestV){ bestV = v; best = [i, j]; }
@@ -384,7 +422,8 @@ function buildTeams(shuffle){
   const { rank } = ranking(c);
   teams.forEach(t => t.members.sort((x, y) => rank.get(x) - rank.get(y)));
   c.teams = teams; swapSel = null; save(); render();
-  toast(`${plural(n, "équipe")} constituée${n > 1 ? "s" : ""}.`);
+  const unk = mix ? pres.filter(s => !s.sex).length : 0;
+  toast(`${plural(n, "équipe")} constituée${n > 1 ? "s" : ""}${mix ? (unk ? `. Mixité : ${plural(unk, "élève")} sans fille/garçon renseigné` : ", filles et garçons répartis") : ""}.`);
 }
 
 /* ====== Tournoi ====== */
@@ -531,15 +570,23 @@ function vRank(){
   return h;
 }
 
+const sexLabel = { F: "Fille", G: "Garçon", "": "Fille ou garçon non indiqué" };
+const sexBtn = s => `<button class="sx ${s.sex}" data-act="cycleSex" data-id="${s.id}" title="${sexLabel[s.sex || ""]}" aria-label="${esc(s.name)} : ${sexLabel[s.sex || ""]}">${s.sex || "?"}</button>`;
+function sexCount(list){
+  const f = list.filter(s => s.sex === "F").length, g = list.filter(s => s.sex === "G").length;
+  return f + g ? ` <span class="muted" style="font-size:1rem;font-weight:400">(${plural(f, "fille")}, ${plural(g, "garçon")})</span>` : "";
+}
 function vEleves(){
   const c = C();
   const list = [...c.students].sort((a, b) => a.name.localeCompare(b.name, "fr"));
   return `<section class="card"><h2>Ajouter des élèves à ${esc(c.name)}</h2>
       <textarea class="txt" id="newNames" placeholder="Un nom par ligne. Vous pouvez coller une colonne depuis Excel."></textarea>
       <div class="row-f" style="margin-top:8px"><button class="btn primary" data-act="addStudents">Ajouter</button></div></section>
-    <section class="card"><h2>${plural(list.length, "élève")}</h2>
+    <section class="card"><h2>${plural(list.length, "élève")}${sexCount(list)}</h2>
+      ${list.length ? `<p class="muted" style="margin:-4px 0 8px;font-size:.9rem">Touchez F / G pour indiquer fille ou garçon (utile pour l'option mixité des équipes). On peut aussi l'importer avec une colonne « Sexe » dans Excel.</p>` : ""}
       ${list.length ? list.map(s => `<div class="stu">
         <button class="toggle ${s.present !== false ? "on" : ""}" data-act="togglePresent" data-id="${s.id}">${s.present !== false ? "Présent" : "Absent"}</button>
+        ${sexBtn(s)}
         <input class="txt" data-ch="renameStudent" data-id="${s.id}" value="${esc(s.name)}" aria-label="Nom">
         <span class="pts" style="font-size:1.2rem">${s.points}</span>
         <button class="x" data-act="delStudent" data-id="${s.id}" aria-label="Supprimer ${esc(s.name)}">×</button></div>`).join("") : `<p class="muted">Aucun élève.</p>`}
@@ -557,6 +604,17 @@ function presenceBlock(){
     <p class="muted" style="margin:8px 0 0;font-size:.9rem">Touchez un nom pour le marquer absent. Les absents ne sont pas placés dans les équipes.</p></section>`;
 }
 
+function mixBox(c){
+  const pres = c.students.filter(s => s.present !== false);
+  const unk = pres.filter(s => !s.sex).sort((a, b) => a.name.localeCompare(b.name, "fr"));
+  const f = pres.filter(s => s.sex === "F").length, g = pres.filter(s => s.sex === "G").length;
+  if (!unk.length) return `<p class="muted" style="margin:0;font-size:.92rem">Présents : ${plural(f, "fille")} et ${plural(g, "garçon")}.</p>`;
+  return `<div class="mixbox"><b>${plural(unk.length, "élève présent")} sans fille/garçon indiqué</b>
+    <p class="muted" style="margin:2px 0 6px;font-size:.9rem">Indiquez-le ici pour une mixité complète. Sinon ces élèves sont répartis à part, équitablement.</p>
+    ${unk.slice(0, 40).map(s => `<div class="mixrow"><span>${esc(s.name)}</span>
+      <button class="btn" data-act="setSex" data-id="${s.id}" data-v="F">Fille</button>
+      <button class="btn" data-act="setSex" data-id="${s.id}" data-v="G">Garçon</button></div>`).join("")}</div>`;
+}
 function vEquipes(){
   const c = C(), cfg = ST().team;
   if (!c.students.length) return empty("Ajoutez d'abord les élèves de la classe.", "Ajouter des élèves", "eleves");
@@ -571,14 +629,20 @@ function vEquipes(){
       <div class="seg"><button class="${cfg.by === "count" ? "on" : ""}" data-act="teamBy" data-v="count">Nombre d'équipes</button><button class="${cfg.by === "size" ? "on" : ""}" data-act="teamBy" data-v="size">Joueurs par équipe</button></div>
       ${cfg.by === "count" ? `<input type="number" class="num" min="2" value="${cfg.n}" data-ch="teamN" data-key="teamN" aria-label="Nombre d'équipes">` : `<input type="number" class="num" min="1" value="${cfg.k}" data-ch="teamK" data-key="teamK" aria-label="Joueurs par équipe">`}
     </div>
-    <div class="row-f"><button class="btn primary" data-act="makeTeams">Constituer les équipes</button>
+    <div class="row-f" style="margin-bottom:12px">
+      <button class="toggle ${cfg.mix ? "on" : ""}" data-act="teamMix" aria-pressed="${!!cfg.mix}">${cfg.mix ? "✓ Privilégier la mixité" : "Privilégier la mixité"}</button>
+      ${cfg.mix ? `<span class="muted" style="font-size:.92rem;flex:1;min-width:200px">Filles et garçons sont répartis à parts égales dans chaque équipe, en respectant le critère de niveau choisi.</span>` : ""}
+    </div>
+    ${cfg.mix ? mixBox(c) : ""}
+    <div class="row-f" style="margin-top:12px"><button class="btn primary" data-act="makeTeams">Constituer les équipes</button>
       ${c.teams ? `<button class="btn" data-act="reshuffle">Autre tirage</button><button class="btn danger" data-act="clearTeams">Effacer</button>` : ""}</div>
   </section>`;
   if (c.teams){
     const valid = c.teams.map(t => ({ ...t, members: t.members.filter(id => stu(id, c)) }));
     h += `<p class="muted" style="margin:0 0 10px">Pour échanger deux joueurs, touchez-en un puis touchez un joueur d'une autre équipe.</p><div class="teams">` + valid.map(t => `
       <div class="team" style="--tc:${t.color}"><header><span class="dot"></span><b>${esc(t.name)}</b><span title="Moyenne de points">moy. ${teamAvg(t, c).toFixed(1)}</span></header>
-      <ul>${t.members.map(id => { const s = stu(id, c); return `<li><button class="${swapSel === id ? "swap" : ""}" data-act="pickMember" data-id="${id}"><span class="r">${rank.get(id)}</span><span class="n">${esc(s.name)}</span><span class="p">${s.points}</span></button></li>`; }).join("")}</ul></div>`).join("") + `</div>
+      ${(() => { const m = t.members.map(id => stu(id, c)); const f = m.filter(s => s.sex === "F").length, g = m.filter(s => s.sex === "G").length; return f + g ? `<div class="muted" style="font-size:.85rem;padding:6px 12px 0">${plural(f, "fille")}, ${plural(g, "garçon")}</div>` : ""; })()}
+      <ul>${t.members.map(id => { const s = stu(id, c); return `<li><button class="${swapSel === id ? "swap" : ""}" data-act="pickMember" data-id="${id}"><span class="r">${rank.get(id)}</span><span class="n">${esc(s.name)}${s.sex ? `<span class="sxt">${s.sex}</span>` : ""}</span><span class="p">${s.points}</span></button></li>`; }).join("")}</ul></div>`).join("") + `</div>
       <div class="row-f" style="margin-top:14px"><button class="btn primary" data-act="tab" data-v="tournoi">Organiser un tournoi avec ces équipes</button></div>`;
   }
   return h;
@@ -827,7 +891,7 @@ async function readImportFile(f){
     sheets = sheets.map(s => ({ name: String(s.name).trim(), rows: Array.from(s.rows, r => Array.from(r || [], v => v == null ? "" : String(v).replace(/\s+/g, " ").trim())) }))
                    .filter(s => s.rows.some(r => r.some(Boolean)));
     if (!sheets.length) throw new Error("Ce fichier ne contient aucune donnée.");
-    imp = { file: f.name, sheets, mode: "sheets", header: false, sheet: 0, use: sheets.map(() => true), nameCol: 0, firstCol: -1, classCol: -1 };
+    imp = { file: f.name, sheets, mode: "sheets", header: false, sheet: 0, use: sheets.map(() => true), nameCol: 0, firstCol: -1, classCol: -1, sexCol: -1 };
     guessImport();
     view = "classes"; render();
   } catch(e){
@@ -843,31 +907,41 @@ function guessImport(){
   const nom = h.findIndex(v => /(^|[\s_\-.'])nom/.test(v) && !/pr[ée]nom/.test(v));
   const pre = find(/pr[ée]nom/);
   const cls = find(/classe|division|groupe|^div/);
-  imp.header = full >= 0 || nom >= 0 || pre >= 0 || cls >= 0;
+  imp.sexCol = find(/^(sexe|genre|sx|f\s*\/\s*g|g\s*\/\s*f|h\s*\/\s*f|f\s*\/\s*h)$/);
+  imp.header = full >= 0 || nom >= 0 || pre >= 0 || cls >= 0 || imp.sexCol >= 0;
   if (full >= 0 && nom < 0){ imp.nameCol = full; imp.firstCol = -1; }
   else { imp.nameCol = nom >= 0 ? nom : (full >= 0 ? full : 0); imp.firstCol = pre >= 0 && pre !== imp.nameCol && full !== pre ? pre : -1; }
   imp.classCol = cls;
   imp.mode = cls >= 0 ? "column" : "sheets";
 }
+function parseSex(v){
+  v = String(v || "").trim().toLowerCase();
+  if (v === "2") return "F";
+  if (v === "1") return "G";
+  if (/^f/.test(v)) return "F";
+  if (/^(g|m|h)/.test(v)) return "G";
+  return "";
+}
 function impClasses(){
   const out = new Map();
-  const push = (cn, n) => {
+  const push = (cn, n, sex) => {
     cn = String(cn || "").trim(); if (!cn || !n) return;
     if (!out.has(cn)) out.set(cn, []);
-    const arr = out.get(cn); if (!arr.some(x => x.toLowerCase() === n.toLowerCase())) arr.push(n);
+    const arr = out.get(cn); if (!arr.some(x => x.name.toLowerCase() === n.toLowerCase())) arr.push({ name: n, sex });
   };
+  const sexOf = r => imp.sexCol >= 0 ? parseSex(r[imp.sexCol]) : "";
   const nameOf = r => [r[imp.nameCol] || "", imp.firstCol >= 0 ? r[imp.firstCol] || "" : ""].map(s => s.trim()).filter(Boolean).join(" ");
   if (imp.mode === "column"){
     if (imp.classCol < 0) return [];
-    dataRows(imp.sheets[imp.sheet].rows).forEach(r => push(r[imp.classCol], nameOf(r)));
-  } else imp.sheets.forEach((s, i) => { if (imp.use[i]) dataRows(s.rows).forEach(r => push(s.name, nameOf(r))); });
+    dataRows(imp.sheets[imp.sheet].rows).forEach(r => push(r[imp.classCol], nameOf(r), sexOf(r)));
+  } else imp.sheets.forEach((s, i) => { if (imp.use[i]) dataRows(s.rows).forEach(r => push(s.name, nameOf(r), sexOf(r))); });
   return [...out].map(([name, students]) => ({ name, students }));
 }
 const sameName = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 function vImport(){
   if (!imp) return `<section class="card"><h2>Importer des classes depuis Excel</h2>
-    <p style="margin-top:0">Deux présentations sont reconnues : <b>une feuille par classe</b> (le nom de la feuille devient le nom de la classe), ou <b>une seule feuille avec une colonne « Classe »</b>. Les noms et prénoms peuvent être dans une même colonne ou dans deux colonnes.</p>
-    <p class="muted" style="font-size:.92rem">Fichiers acceptés : .xlsx et .csv. La lecture se fait sur l'appareil, sans connexion. Si une classe existe déjà, seuls les élèves absents de la liste sont ajoutés.</p>
+    <p style="margin-top:0">Deux présentations sont reconnues : <b>une feuille par classe</b> (le nom de la feuille devient le nom de la classe), ou <b>une seule feuille avec une colonne « Classe »</b>. Les noms et prénoms peuvent être dans une même colonne ou dans deux colonnes. Une colonne « Sexe » (F / G ou F / M) est reconnue pour l'option mixité.</p>
+    <p class="muted" style="font-size:.92rem">Fichiers acceptés : .xlsx et .csv. La lecture se fait sur l'appareil, sans connexion. Si une classe existe déjà, seuls les élèves absents de la liste sont ajoutés, et la colonne « Sexe » complète les élèves déjà présents.</p>
     <button class="btn primary" data-act="pickXlsx">Choisir un fichier Excel</button></section>`;
   const ref = imp.mode === "column" ? imp.sheets[imp.sheet].rows : (imp.sheets.find((s, i) => imp.use[i]) || imp.sheets[0]).rows;
   const fr = firstRow(ref);
@@ -889,16 +963,18 @@ function vImport(){
     ${imp.mode === "column" ? `<label class="field">Colonne de la classe<select class="sel" data-ch="impCol" data-f="classCol">${colOpts(imp.classCol, "À choisir")}</select></label>` : ""}
     <label class="field">Colonne du nom<select class="sel" data-ch="impCol" data-f="nameCol">${colOpts(imp.nameCol)}</select></label>
     <label class="field">Colonne du prénom<select class="sel" data-ch="impCol" data-f="firstCol">${colOpts(imp.firstCol, "Aucune (nom complet dans une colonne)")}</select></label>
+    <label class="field">Colonne fille / garçon (facultatif)<select class="sel" data-ch="impCol" data-f="sexCol">${colOpts(imp.sexCol, "Aucune")}</select></label>
   </div></section>`;
   h += `<section class="card"><h2>Aperçu</h2>`;
   if (!classes.length) h += `<p class="muted">${imp.mode === "column" && imp.classCol < 0 ? "Choisissez la colonne qui contient la classe." : "Aucun élève trouvé avec ces réglages. Vérifiez les colonnes choisies."}</p>`;
   else {
     h += classes.map(k => {
       const ex = S.classes.find(c => sameName(c.name, k.name));
-      const fresh = ex ? k.students.filter(n => !ex.students.some(s => sameName(s.name, n))).length : k.students.length;
-      return `<div class="imp-cls"><b>${esc(k.name)}</b> <span class="muted">${plural(k.students.length, "élève")}</span>
+      const fresh = ex ? k.students.filter(x => !ex.students.some(s => sameName(s.name, x.name))).length : k.students.length;
+      const nf = k.students.filter(x => x.sex === "F").length, ng = k.students.filter(x => x.sex === "G").length;
+      return `<div class="imp-cls"><b>${esc(k.name)}</b> <span class="muted">${plural(k.students.length, "élève")}${nf + ng ? ` (${plural(nf, "fille")}, ${plural(ng, "garçon")})` : ""}</span>
         ${ex ? `<span class="tag old">Classe existante : ${fresh ? `+${fresh} ${fresh > 1 ? "nouveaux" : "nouvel"} élève${fresh > 1 ? "s" : ""}` : "rien à ajouter"}</span>` : `<span class="tag">Nouvelle classe</span>`}
-        <p class="muted">${k.students.slice(0, 6).map(esc).join(", ")}${k.students.length > 6 ? "…" : ""}</p></div>`;
+        <p class="muted">${k.students.slice(0, 6).map(x => esc(x.name)).join(", ")}${k.students.length > 6 ? "…" : ""}</p></div>`;
     }).join("");
     h += `<div class="row-f" style="margin-top:10px"><button class="btn primary" data-act="doImport">Importer ${plural(classes.length, "classe")} (${plural(total, "élève")})</button></div>`;
   }
@@ -906,7 +982,7 @@ function vImport(){
 }
 function doImport(){
   const classes = impClasses(); if (!classes.length) return;
-  let added = 0, created = 0, firstId = null;
+  let added = 0, created = 0, filled = 0, firstId = null;
   classes.forEach(k => {
     let c = S.classes.find(x => sameName(x.name, k.name));
     if (!c){
@@ -916,11 +992,15 @@ function doImport(){
       c = blank || S.classes[S.classes.length - 1]; created++;
     }
     firstId ||= c.id;
-    k.students.forEach(n => { if (!c.students.some(s => sameName(s.name, n))){ c.students.push({ id: uid(), name: n, present: true }); added++; } });
+    k.students.forEach(x => {
+      const old = c.students.find(s => sameName(s.name, x.name));
+      if (!old){ c.students.push({ id: uid(), name: x.name, present: true, sex: x.sex }); added++; }
+      else if (x.sex && old.sex !== x.sex){ old.sex = x.sex; filled++; }
+    });
   });
   S.cur = firstId; imp = null; sel.clear(); chSel = { a: [], b: [] }; swapSel = null;
   save(); render();
-  toast(`${plural(added, "élève")} importé${added > 1 ? "s" : ""}${created ? `, ${plural(created, "classe")} créée${created > 1 ? "s" : ""}` : ""}.`);
+  toast(`${plural(added, "élève")} importé${added > 1 ? "s" : ""}${created ? `, ${plural(created, "classe")} créée${created > 1 ? "s" : ""}` : ""}${filled ? `, fille/garçon complété pour ${plural(filled, "élève")}` : ""}.`);
 }
 
 /* ====== Actions ====== */
@@ -984,6 +1064,9 @@ const ACT = {
   resetPoints: () => { if (!confirm("Remettre tous les points à 0 ?")) return; track(() => applyChanges(C().students.map(s => ({ sid: s.id, delta: -s.points })), "Remise à zéro des points")); render(); },
   teamMode: el => { ST().team.mode = el.dataset.v; save(); render(); },
   teamBy: el => { ST().team.by = el.dataset.v; save(); render(); },
+  teamMix: () => { ST().team.mix = !ST().team.mix; save(); render(); },
+  cycleSex: el => { const s = stu(el.dataset.id); if (!s) return; s.sex = { "": "F", F: "G", G: "" }[s.sex || ""]; save(); rerender(); },
+  setSex: el => { const s = stu(el.dataset.id); if (!s) return; s.sex = el.dataset.v; save(); render(); },
   makeTeams: () => { const c = C(); if (c.tour && c.teams && !confirm("Les nouvelles équipes ne modifient pas le tournoi déjà créé. Continuer ?")) return; buildTeams(false); },
   reshuffle: () => buildTeams(true),
   clearTeams: () => { C().teams = null; swapSel = null; save(); render(); },
