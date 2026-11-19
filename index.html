@@ -142,6 +142,13 @@ li.p1{--c:var(--gold)} li.p2{--c:var(--silver)} li.p3{--c:var(--bronze)}
 .team li .r{font-family:var(--num);width:26px;color:var(--muted)}
 .team li .n{flex:1}
 .team li .p{font-family:var(--num)}
+.team li button.clash .n{color:var(--red);font-weight:700}
+.sepg{display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.sepg:last-of-type{border-bottom:0}
+.sepg span{flex:1}
+.sepick{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px}
+.sepick button{border:1.5px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 10px;font-size:.92rem}
+.sepick button.on{border-color:var(--red);background:color-mix(in srgb,var(--red) 12%,transparent);font-weight:600}
 
 /* Tournoi */
 .pool{margin-bottom:18px}
@@ -262,6 +269,8 @@ function normalize(s){
   s.classes.forEach(c => {
     c.students = (c.students || []).map(st => ({ id: st.id, name: st.name, present: st.present !== false, sex: st.sex === "F" || st.sex === "G" ? st.sex : "" }));
     delete c.history; delete c.teams; delete c.tour;
+    const ids = new Set(c.students.map(x => x.id));
+    c.sep = (c.sep || []).map(g => [...new Set(g)].filter(id => ids.has(id))).filter(g => g.length >= 2);
   });
   s.activities.forEach(a => { a.settings = normSettings(a.settings); a.icon ||= guessIcon(a.name); a.color ||= ACT_COLORS[0]; });
   if (!s.classes.some(c => c.id === s.cur)) s.cur = s.classes[0].id;
@@ -273,6 +282,13 @@ function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){
 
 let S = load();
 let imp = null;
+let sepPick = null;
+/* Élèves à séparer : groupes d'élèves qui ne doivent jamais être dans la même équipe (aucun motif enregistré) */
+function sepClash(c){
+  const set = new Set();
+  (c.sep || []).forEach(g => g.forEach((a, i) => g.slice(i + 1).forEach(b => set.add(a < b ? a + "|" + b : b + "|" + a))));
+  return (a, b) => a !== b && set.has(a < b ? a + "|" + b : b + "|" + a);
+}
 let view = "rank", sel = new Set(), motif = "", moved = new Map(), movedT = null, swapSel = null, chSel = { a: [], b: [] }, flashIds = new Set();
 
 const A = () => S.activities.find(a => a.id === S.curAct) || S.activities[0];
@@ -290,7 +306,8 @@ function C(){
     get students(){ return k.students.map(wrap); }, set students(v){ k.students = v.map(w => w._s || w); },
     get history(){ return r.history; }, set history(v){ r.history = v; },
     get teams(){ return r.teams; }, set teams(v){ r.teams = v; },
-    get tour(){ return r.tour; }, set tour(v){ r.tour = v; } };
+    get tour(){ return r.tour; }, set tour(v){ r.tour = v; },
+    get sep(){ return k.sep ||= []; }, set sep(v){ k.sep = v; } };
 }
 function applyTheme(){
   const a = A(), st = document.documentElement.style;
@@ -298,7 +315,7 @@ function applyTheme(){
   st.setProperty("--court-soft", `color-mix(in srgb, ${a.color} 16%, transparent)`);
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", a.color);
 }
-function switchCtx(){ sel.clear(); swapSel = null; chSel = { a: [], b: [] }; moved = new Map(); save(); render(); }
+function switchCtx(){ sepPick = null; sel.clear(); swapSel = null; chSel = { a: [], b: [] }; moved = new Map(); save(); render(); }
 const stu = (id, c = C()) => c.students.find(s => s.id === id);
 const esc = s => String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const plural = (n, w) => `${n} ${w}${Math.abs(n) > 1 ? "s" : ""}`;
@@ -359,6 +376,56 @@ function buildTeams(shuffle){
   });
   const mix = !!cfg.mix;
   const SX = new Map(pres.map(s => [s.id, s.sex || ""]));
+  const P = new Map(c.students.map(s => [s.id, s.points]));
+  const clash = sepClash(c);
+  const hits = (arr, x, skip) => arr.reduce((k, y) => k + (y !== skip && clash(x, y) ? 1 : 0), 0);
+  const swapDelta = (A, x, B, y) => hits(A, y, x) - hits(A, x) + hits(B, x, y) - hits(B, y);
+  const conflicts = () => teams.reduce((k, t) => k + t.members.reduce((kk, x) => kk + hits(t.members, x), 0) / 2, 0);
+  // Affinage : échanges qui rapprochent la moyenne de chaque équipe de la moyenne générale, sans réunir des élèves à séparer
+  const refine = () => {
+    const g = pres.reduce((a, s) => a + s.points, 0) / N;
+    const sum = t => t.members.reduce((a, id) => a + P.get(id), 0);
+    for (let it = 0; it < 300; it++){
+      let improved = false;
+      for (let a = 0; a < n; a++) for (let b = a + 1; b < n; b++){
+        const A = teams[a], B = teams[b], la = A.members.length, lb = B.members.length;
+        const sa = sum(A), sb = sum(B);
+        const cost = (x, y) => (x / la - g) ** 2 + (y / lb - g) ** 2;
+        let best = null, bestV = cost(sa, sb) - 1e-9;
+        for (let i = 0; i < la; i++) for (let j = 0; j < lb; j++){
+          if (mix && SX.get(A.members[i]) !== SX.get(B.members[j])) continue;
+          if (swapDelta(A.members, A.members[i], B.members, B.members[j]) > 0) continue;
+          const d = P.get(B.members[j]) - P.get(A.members[i]);
+          const v = cost(sa + d, sb - d);
+          if (v < bestV){ bestV = v; best = [i, j]; }
+        }
+        if (best){ const [i, j] = best; [A.members[i], B.members[j]] = [B.members[j], A.members[i]]; improved = true; }
+      }
+      if (!improved) break;
+    }
+  };
+  // Séparation : échange chaque élève en conflit avec un élève de niveau proche d'une autre équipe
+  const separate = () => {
+    for (let it = 0; it < 500; it++){
+      let fixed = false;
+      outer: for (const A of teams) for (const x of A.members){
+        if (!hits(A.members, x)) continue;
+        let best = null, bv = Infinity;
+        for (const B of teams){
+          if (B === A) continue;
+          for (const y of B.members){
+            if (mix && SX.get(x) !== SX.get(y)) continue;
+            const d = swapDelta(A.members, x, B.members, y);
+            if (d >= 0) continue;
+            const v = Math.abs(P.get(x) - P.get(y)) * 100 + d;
+            if (v < bv){ bv = v; best = [B, y]; }
+          }
+        }
+        if (best){ const [B, y] = best; A.members[A.members.indexOf(x)] = y; B.members[B.members.indexOf(y)] = x; fixed = true; break outer; }
+      }
+      if (!fixed) break;
+    }
+  };
   if (mix){
     // Mixité : chaque groupe (filles, garçons, non renseignés) est réparti à parts égales entre les équipes
     const groups = ["F", "G", ""].map(k => pres.filter(s => (s.sex || "") === k)).filter(g => g.length);
@@ -397,33 +464,17 @@ function buildTeams(shuffle){
       order.sort((a, b) => a.c - b.c || a.t - b.t || (shuffle ? a.r - b.r : (i / n) % 2 ? b.k - a.k : a.k - b.k));
       tier.forEach((s, j) => { const k = order[j].k; teams[k].members.push(s.id); tot[k] += s.points; });
     }
-    // Affinage : échanges qui rapprochent la moyenne de chaque équipe de la moyenne générale
-    const P = new Map(c.students.map(s => [s.id, s.points]));
-    const g = pres.reduce((a, s) => a + s.points, 0) / N;
-    const sum = t => t.members.reduce((a, id) => a + P.get(id), 0);
-    for (let it = 0; it < 300; it++){
-      let improved = false;
-      for (let a = 0; a < n; a++) for (let b = a + 1; b < n; b++){
-        const A = teams[a], B = teams[b], la = A.members.length, lb = B.members.length;
-        const sa = sum(A), sb = sum(B);
-        const cost = (x, y) => (x / la - g) ** 2 + (y / lb - g) ** 2;
-        let best = null, bestV = cost(sa, sb) - 1e-9;
-        for (let i = 0; i < la; i++) for (let j = 0; j < lb; j++){
-          if (mix && SX.get(A.members[i]) !== SX.get(B.members[j])) continue;
-          const d = P.get(B.members[j]) - P.get(A.members[i]);
-          const v = cost(sa + d, sb - d);
-          if (v < bestV){ bestV = v; best = [i, j]; }
-        }
-        if (best){ const [i, j] = best; [A.members[i], B.members[j]] = [B.members[j], A.members[i]]; improved = true; }
-      }
-      if (!improved) break;
-    }
+    refine();
   }
+  separate();
+  if (cfg.mode !== "niveau") refine();
+  const left = conflicts();
   const { rank } = ranking(c);
   teams.forEach(t => t.members.sort((x, y) => rank.get(x) - rank.get(y)));
   c.teams = teams; swapSel = null; save(); render();
   const unk = mix ? pres.filter(s => !s.sex).length : 0;
-  toast(`${plural(n, "équipe")} constituée${n > 1 ? "s" : ""}${mix ? (unk ? `. Mixité : ${plural(unk, "élève")} sans fille/garçon renseigné` : ", filles et garçons répartis") : ""}.`);
+  const nSep = (c.sep || []).length;
+  toast(`${plural(n, "équipe")} constituée${n > 1 ? "s" : ""}${mix ? (unk ? `. Mixité : ${plural(unk, "élève")} sans fille/garçon renseigné` : ", filles et garçons répartis") : ""}${left ? `. Attention : ${plural(left, "binôme")} à séparer reste${left > 1 ? "nt" : ""} ensemble (en rouge), pas assez d'équipes` : nSep ? ", élèves à séparer respectés" : ""}.`);
 }
 
 /* ====== Tournoi ====== */
@@ -615,6 +666,22 @@ function mixBox(c){
       <button class="btn" data-act="setSex" data-id="${s.id}" data-v="F">Fille</button>
       <button class="btn" data-act="setSex" data-id="${s.id}" data-v="G">Garçon</button></div>`).join("")}</div>`;
 }
+function sepBox(c){
+  const nm = id => stu(id, c)?.name || "?";
+  const groups = c.sep || [];
+  let h = `<section class="card"><div class="row-f" style="margin-bottom:4px"><h2 style="margin:0;flex:1">Élèves à séparer${groups.length ? ` (${groups.length})` : ""}</h2>
+    ${sepPick ? "" : `<button class="btn" data-act="sepOpen">Ajouter</button>`}</div>
+    <p class="muted" style="margin:0 0 6px;font-size:.92rem">Ces élèves ne sont jamais placés dans la même équipe, dans toutes les activités de cette classe. Aucun motif n'est demandé ni enregistré.</p>
+    ${groups.map((g, i) => `<div class="sepg"><span>${g.map(id => esc(nm(id))).join(" / ")}</span><button class="btn" data-act="sepDel" data-i="${i}">Retirer</button></div>`).join("")}`;
+  if (sepPick){
+    const list = [...c.students].sort((a, b) => a.name.localeCompare(b.name, "fr"));
+    h += `<div class="mixbox"><b>Touchez les élèves qui ne doivent pas jouer ensemble</b> <span class="muted">(2 ou plus)</span>
+      <div class="sepick">${list.map(s => `<button class="${sepPick.has(s.id) ? "on" : ""}" data-act="sepToggle" data-id="${s.id}">${esc(s.name)}</button>`).join("")}</div>
+      <div class="row-f"><button class="btn primary" data-act="sepSave" ${sepPick.size < 2 ? "disabled" : ""}>Séparer ${sepPick.size >= 2 ? "ces " + plural(sepPick.size, "élève") : "les élèves choisis"}</button>
+      <button class="btn" data-act="sepCancel">Annuler</button></div></div>`;
+  }
+  return h + `</section>`;
+}
 function vEquipes(){
   const c = C(), cfg = ST().team;
   if (!c.students.length) return empty("Ajoutez d'abord les élèves de la classe.", "Ajouter des élèves", "eleves");
@@ -636,13 +703,14 @@ function vEquipes(){
     ${cfg.mix ? mixBox(c) : ""}
     <div class="row-f" style="margin-top:12px"><button class="btn primary" data-act="makeTeams">Constituer les équipes</button>
       ${c.teams ? `<button class="btn" data-act="reshuffle">Autre tirage</button><button class="btn danger" data-act="clearTeams">Effacer</button>` : ""}</div>
-  </section>`;
+  </section>` + sepBox(c);
   if (c.teams){
     const valid = c.teams.map(t => ({ ...t, members: t.members.filter(id => stu(id, c)) }));
+    const clash = sepClash(c);
     h += `<p class="muted" style="margin:0 0 10px">Pour échanger deux joueurs, touchez-en un puis touchez un joueur d'une autre équipe.</p><div class="teams">` + valid.map(t => `
       <div class="team" style="--tc:${t.color}"><header><span class="dot"></span><b>${esc(t.name)}</b><span title="Moyenne de points">moy. ${teamAvg(t, c).toFixed(1)}</span></header>
       ${(() => { const m = t.members.map(id => stu(id, c)); const f = m.filter(s => s.sex === "F").length, g = m.filter(s => s.sex === "G").length; return f + g ? `<div class="muted" style="font-size:.85rem;padding:6px 12px 0">${plural(f, "fille")}, ${plural(g, "garçon")}</div>` : ""; })()}
-      <ul>${t.members.map(id => { const s = stu(id, c); return `<li><button class="${swapSel === id ? "swap" : ""}" data-act="pickMember" data-id="${id}"><span class="r">${rank.get(id)}</span><span class="n">${esc(s.name)}${s.sex ? `<span class="sxt">${s.sex}</span>` : ""}</span><span class="p">${s.points}</span></button></li>`; }).join("")}</ul></div>`).join("") + `</div>
+      <ul>${t.members.map(id => { const s = stu(id, c); return `<li><button class="${swapSel === id ? "swap" : ""} ${t.members.some(y => clash(id, y)) ? "clash" : ""}" data-act="pickMember" data-id="${id}"><span class="r">${rank.get(id)}</span><span class="n">${t.members.some(y => clash(id, y)) ? "⚠ " : ""}${esc(s.name)}${s.sex ? `<span class="sxt">${s.sex}</span>` : ""}</span><span class="p">${s.points}</span></button></li>`; }).join("")}</ul></div>`).join("") + `</div>
       <div class="row-f" style="margin-top:14px"><button class="btn primary" data-act="tab" data-v="tournoi">Organiser un tournoi avec ces équipes</button></div>`;
   }
   return h;
@@ -1056,6 +1124,7 @@ const ACT = {
     const c = C(), s = stu(el.dataset.id); if (!s || !confirm(`Supprimer ${s.name} ?`)) return;
     c.students = c.students.filter(x => x.id !== s.id);
     if (c.teams) c.teams.forEach(t => t.members = t.members.filter(id => id !== s.id));
+    c.sep = c.sep.map(g => g.filter(id => id !== s.id)).filter(g => g.length >= 2);
     sel.delete(s.id); save(); render();
   },
   togglePresent: el => { const s = stu(el.dataset.id); s.present = s.present === false; save(); render(); },
@@ -1079,7 +1148,18 @@ const ACT = {
     tA.members[tA.members.indexOf(swapSel)] = id; tB.members[tB.members.indexOf(id)] = swapSel;
     const { rank } = ranking(c); [tA, tB].forEach(t => t.members.sort((x, y) => rank.get(x) - rank.get(y)));
     swapSel = null; save(); render();
+    const clash = sepClash(c), warn = [tA, tB].flatMap(t => t.members.flatMap((x, i) => t.members.slice(i + 1).filter(y => clash(x, y)).map(y => stu(x, c).name + " et " + stu(y, c).name)));
+    if (warn.length) toast(`Attention : ${warn.join(", ")} doivent être séparés.`);
   },
+  sepOpen: () => { sepPick = new Set(); render(); },
+  sepCancel: () => { sepPick = null; render(); },
+  sepToggle: el => { const id = el.dataset.id; sepPick.has(id) ? sepPick.delete(id) : sepPick.add(id); rerender(); },
+  sepSave: () => {
+    if (!sepPick || sepPick.size < 2) return;
+    const c = C(); c.sep = [...c.sep, [...sepPick]]; sepPick = null; save(); render();
+    toast("Ces élèves seront séparés à la prochaine constitution des équipes.");
+  },
+  sepDel: el => { const c = C(); c.sep = c.sep.filter((g, i) => i !== +el.dataset.i); save(); render(); },
   tourMode: el => { ST().tour.mode = el.dataset.v; save(); render(); },
   genTour: () => genTour(),
   delTour: () => { if (!confirm("Supprimer ce tournoi ? Les points déjà distribués restent au classement.")) return; C().tour = null; save(); render(); },
